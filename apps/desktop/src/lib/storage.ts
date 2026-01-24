@@ -754,6 +754,15 @@ export function saveGachaRecords(records: GachaRecord[]): void {
 }
 
 /**
+ * 仅更新 localStorage 缓存（不写穿 SQLite）。
+ * 用于：云同步下载后，SQLite 已落库但 UI 读取仍依赖 localStorage。
+ */
+export function setGachaRecordsCache(records: GachaRecord[]): void {
+  localStorage.setItem(STORAGE_KEYS.GACHA_RECORDS, JSON.stringify(records));
+  notifyStorageChange({ keys: [STORAGE_KEYS.GACHA_RECORDS], reason: 'cloudSyncMerge' });
+}
+
+/**
  * 批量添加角色抽卡记录（自动去重）
  * @returns 新增的记录数量
  */
@@ -872,6 +881,15 @@ export function saveWeaponRecords(records: WeaponRecord[]): void {
       await dbSaveWeaponRecords(batch);
     }
   });
+}
+
+/**
+ * 仅更新 localStorage 缓存（不写穿 SQLite）。
+ * 用于：云同步下载后，SQLite 已落库但 UI 读取仍依赖 localStorage。
+ */
+export function setWeaponRecordsCache(records: WeaponRecord[]): void {
+  localStorage.setItem(STORAGE_KEYS.WEAPON_RECORDS, JSON.stringify(records));
+  notifyStorageChange({ keys: [STORAGE_KEYS.WEAPON_RECORDS], reason: 'cloudSyncMerge' });
 }
 
 /**

@@ -1,8 +1,10 @@
 import react from '@vitejs/plugin-react';
+import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vite';
 
 const host = process.env.TAURI_DEV_HOST;
+const pkg = JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version?: string };
 
 // https://v2.tauri.app/start/frontend/vite/
 export default defineConfig({
@@ -12,9 +14,12 @@ export default defineConfig({
       '@efgachahelper/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
     },
   },
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version ?? '0.0.0'),
+  },
   clearScreen: false,
   server: {
-    port: 5173,
+    port: 5273,
     strictPort: true,
     host: host || false,
     ...(host

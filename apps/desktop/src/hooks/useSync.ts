@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { SyncConfig, SyncStatus, CloudGachaRecord } from '@efgachahelper/shared';
 import { DEFAULT_SYNC_CONFIG } from '@efgachahelper/shared';
 import { syncApi, SyncApiError } from '../lib/syncApi';
+import { getTimestamp } from '../lib/dateUtils';
 import {
   dbGetGachaRecords,
   dbGetWeaponRecords,
@@ -25,6 +26,12 @@ import {
   getAccountRoleId,
   getAccountServerId,
   getAccountHgUid,
+  getGachaRecords as getLocalGachaRecords,
+  getWeaponRecords as getLocalWeaponRecords,
+  setGachaRecordsCache,
+  setWeaponRecordsCache,
+  type GachaRecord,
+  type WeaponRecord,
 } from '../lib/storage';
 
 // 存储 key
@@ -49,6 +56,83 @@ const notifySyncChange = () => {
 export const notifyDataChange = () => {
   window.dispatchEvent(new CustomEvent(DATA_CHANGE_EVENT));
 };
+
+/**
+ * 云同步下载后写回 localStorage 缓存（UI 读取层）。
+ * 注意：云同步落库（SQLite）由 dbSave* 完成，这里仅负责让 UI 立刻可见。
+ */
+function mergeCloudDownloadIntoLocalCache(localUid: string, records: CloudGachaRecord[]): void {
+  if (!records.length) return;
+
+  const allChar = getLocalGachaRecords();
+  const allWeapon = getLocalWeaponRecords();
+
+  const existingCharIds = new Set(allChar.map((r) => r.recordUid));
+  const existingWeaponIds = new Set(allWeapon.map((r) => r.recordUid));
+
+  let charAdded = 0;
+  let weaponAdded = 0;
+
+  for (const r of records) {
+    if (r.category === 'character') {
+      const recordUid = `${localUid}_char_${r.seqId}`;
+      if (existingCharIds.has(recordUid)) continue;
+      existingCharIds.add(recordUid);
+
+      const stored: GachaRecord = {
+        uid: localUid,
+        recordUid,
+        fetchedAt: r.fetchedAt,
+        category: 'character',
+        poolId: r.poolId,
+        poolName: r.poolName,
+        charId: r.itemId,
+        charName: r.itemName,
+        rarity: r.rarity,
+        isNew: r.isNew,
+        isFree: r.isFree ?? false,
+        gachaTs: r.gachaTs,
+        seqId: r.seqId,
+      };
+      allChar.push(stored);
+      charAdded++;
+      continue;
+    }
+
+    if (r.category === 'weapon') {
+      const recordUid = `${localUid}_weapon_${r.seqId}`;
+      if (existingWeaponIds.has(recordUid)) continue;
+      existingWeaponIds.add(recordUid);
+
+      const stored: WeaponRecord = {
+        uid: localUid,
+        recordUid,
+        fetchedAt: r.fetchedAt,
+        category: 'weapon',
+        poolId: r.poolId,
+        poolName: r.poolName,
+        weaponId: r.itemId,
+        weaponName: r.itemName,
+        weaponType: r.weaponType ?? '',
+        rarity: r.rarity,
+        isNew: r.isNew,
+        gachaTs: r.gachaTs,
+        seqId: r.seqId,
+      };
+      allWeapon.push(stored);
+      weaponAdded++;
+    }
+  }
+
+  if (charAdded > 0) {
+    allChar.sort((a, b) => getTimestamp(b.gachaTs) - getTimestamp(a.gachaTs));
+    setGachaRecordsCache(allChar);
+  }
+  if (weaponAdded > 0) {
+    allWeapon.sort((a, b) => getTimestamp(b.gachaTs) - getTimestamp(a.gachaTs));
+    setWeaponRecordsCache(allWeapon);
+  }
+}
 
 function getForceFullDownloadUids(): Set<string> {
   try {
@@ -506,6 +590,9 @@ export function useSyncAuth() {
               region: cloudAccount.region,
             },
           );
+
+          // 写回 localStorage 缓存（UI 读取层）
+          mergeCloudDownloadIntoLocalCache(localUid, downloadResult.records);
           
           // 分离角色和武器记录
           const characterRecords = downloadResult.records
@@ -610,6 +697,9 @@ export function useSyncAuth() {
             config.accessToken,
             downloadParams,
           );
+
+          // 写回 localStorage 缓存（UI 读取层）
+          mergeCloudDownloadIntoLocalCache(uid, downloadResult.records);
           
           // 分离角色和武器记录
           const downloadedCharRecords = downloadResult.records

@@ -4,7 +4,17 @@
 
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type BadgeVariant = 'default' | 'brand' | 'success' | 'warning' | 'error' | 'rarity6' | 'rarity5' | 'rarity4' | 'rarity3';
+type BadgeVariant =
+  | 'default'
+  | 'brand'
+  | 'version'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'rarity6'
+  | 'rarity5'
+  | 'rarity4'
+  | 'rarity3';
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
@@ -14,6 +24,8 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 const variantClasses: Record<BadgeVariant, string> = {
   default: 'bg-bg-3 text-fg-0 border-border',
   brand: 'bg-brand text-black border-brand',
+  version:
+    'bg-gradient-to-r from-brand/15 to-purple-500/15 text-fg-0 border-brand/25 px-2.5 py-1 rounded-full font-mono text-[11px] tracking-wide shadow-sm',
   success: 'bg-green-500/20 text-green-400 border-green-500/30',
   warning: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   error: 'bg-red-500/20 text-red-400 border-red-500/30',

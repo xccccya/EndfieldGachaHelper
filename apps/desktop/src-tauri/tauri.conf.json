@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "EndfieldGachaHelper",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "com.efgachahelper.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:5273",
     "frontendDist": "../dist"
   },
   "app": {

@@ -28,6 +28,7 @@ import {
   Scale,
 } from 'lucide-react';
 import { useUpdater } from '../../hooks/useUpdater';
+import { useAppInfo } from '../../hooks/useAppInfo';
 import { Card, CardHeader, CardContent, Button, Badge, ConfirmDialog, Popover, LegalModal } from '../components';
 import { useAccounts } from '../../hooks/useEndfield';
 import { markForceFullDownload } from '../../hooks/useSync';
@@ -75,6 +76,7 @@ type MessageState = {
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { activeUid, activeAccount, accounts } = useAccounts();
+  const { version } = useAppInfo();
   const [message, setMessage] = useState<MessageState | null>(null);
   const [exporting, setExporting] = useState(false);
   
@@ -564,7 +566,7 @@ export function SettingsPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-fg-2">{t('settings.version')}</span>
-                  <Badge variant="brand">v0.1.0</Badge>
+                  <Badge variant="version">v{version}</Badge>
                 </div>
                 
                 {/* 检查更新按钮 */}
