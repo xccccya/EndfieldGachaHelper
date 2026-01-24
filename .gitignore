@@ -5,6 +5,7 @@ node_modules
 dist
 dist-ssr
 .turbo
+*.tsbuildinfo
 
 # env files
 .env
@@ -37,3 +38,4 @@ apps/desktop/src-tauri/target
 
 apidemo
 releases
+apps/desktop/src-tauri/icons/icon.icns
