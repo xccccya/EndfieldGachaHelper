@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-ssr
+apps/desktop/src-tauri/target
+apps/api/node_modules
+apps/desktop/node_modules
+packages/shared/node_modules
+package-lock.json

@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  refreshTokens RefreshToken[]
+  gameAccounts  GameAccount[]
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String
+  revokedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model GameAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  uid       String
+  region    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gachaRecords GachaRecord[]
+
+  @@unique([userId, uid, region])
+  @@index([userId])
+}
+
+model GachaRecord {
+  id            String   @id @default(cuid())
+  gameAccountId String
+
+  // 桌面端生成：稳定、可复算，用于幂等去重
+  recordUid     String   @unique
+
+  pool          String
+  itemName      String
+  rarity        Int
+  pulledAt      DateTime
+
+  createdAt DateTime @default(now())
+
+  gameAccount GameAccount @relation(fields: [gameAccountId], references: [id], onDelete: Cascade)
+
+  @@index([gameAccountId, pulledAt])
+}
+

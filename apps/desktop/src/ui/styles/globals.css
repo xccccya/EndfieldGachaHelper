@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  /* 品牌色 */
+  --brand: #fffa00;
+  --brand-hover: #efe701;
+  --brand-active: #eeea00;
+
+  /* 明亮主题（默认） */
+  --bg-0: #fafafa;
+  --bg-1: #ffffff;
+  --bg-2: #f2f2f2;
+  --fg-0: #191919;
+  --fg-1: #383838;
+  --fg-2: #888888;
+  --border: rgba(38, 38, 38, 0.18);
+}
+
+html[data-theme='dark'] {
+  --bg-0: #141414;
+  --bg-1: #191919;
+  --bg-2: #1f1f1f;
+  --fg-0: rgba(255, 255, 255, 0.92);
+  --fg-1: rgba(255, 255, 255, 0.82);
+  --fg-2: rgba(255, 255, 255, 0.62);
+  --border: rgba(255, 255, 255, 0.16);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* 轻量工业斜纹背景（可按 Design.md 再细化） */
+.bg-bg-0 {
+  background-image: linear-gradient(
+      135deg,
+      rgba(255, 250, 0, 0.08) 0%,
+      rgba(255, 250, 0, 0.08) 6%,
+      rgba(0, 0, 0, 0) 6%,
+      rgba(0, 0, 0, 0) 50%,
+      rgba(255, 250, 0, 0.06) 50%,
+      rgba(255, 250, 0, 0.06) 56%,
+      rgba(0, 0, 0, 0) 56%,
+      rgba(0, 0, 0, 0) 100%
+    ),
+    radial-gradient(1200px 700px at 10% 10%, rgba(255, 250, 0, 0.08), rgba(0, 0, 0, 0) 60%);
+  background-size: 24px 24px, auto;
+}
+

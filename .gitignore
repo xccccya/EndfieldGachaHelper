@@ -1,0 +1,36 @@
+# dependencies
+node_modules
+
+# build outputs
+dist
+dist-ssr
+.turbo
+
+# env files
+.env
+.env.*
+!.env.example
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# editor/ide
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# tauri/rust
+apps/desktop/src-tauri/target

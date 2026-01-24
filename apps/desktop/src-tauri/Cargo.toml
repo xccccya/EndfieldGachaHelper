@@ -1,0 +1,18 @@
+[package]
+name = "efgachahelper"
+version = "0.1.0"
+description = "终末地抽卡助手（桌面端）"
+authors = ["EFGachaHelper"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.dev]
+incremental = true
+

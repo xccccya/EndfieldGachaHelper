@@ -1,0 +1,20 @@
+{
+  "name": "endfieldgachahelper",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run -w @efgachahelper/desktop dev",
+    "dev:desktop": "npm run -w @efgachahelper/desktop dev",
+    "dev:api": "npm run -w @efgachahelper/api start:dev",
+    "build": "npm -ws run build",
+    "typecheck": "npm -ws run typecheck",
+    "lint": "npm -ws run lint",
+    "format": "prettier -w ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "identifier": "main",
+  "description": "主窗口基础权限（开发阶段）",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
+
