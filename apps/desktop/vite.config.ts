@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react';
+import path from 'node:path';
 import { defineConfig } from 'vite';
 
 const host = process.env.TAURI_DEV_HOST;
@@ -6,6 +7,11 @@ const host = process.env.TAURI_DEV_HOST;
 // https://v2.tauri.app/start/frontend/vite/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@efgachahelper/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
+    },
+  },
   clearScreen: false,
   server: {
     port: 5173,

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   /* 品牌色 */
   --brand: #fffa00;
   --brand-hover: #efe701;
@@ -10,20 +11,42 @@
   --bg-0: #fafafa;
   --bg-1: #ffffff;
   --bg-2: #f2f2f2;
+  --bg-3: #e6e6e6;
   --fg-0: #191919;
   --fg-1: #383838;
   --fg-2: #888888;
   --border: rgba(38, 38, 38, 0.18);
+  
+  /* 工业风特殊色 */
+  --accent-dark: #1f1f1f;
+  --stripe-color: rgba(255, 250, 0, 0.15);
 }
 
 html[data-theme='dark'] {
-  --bg-0: #141414;
-  --bg-1: #191919;
-  --bg-2: #1f1f1f;
-  --fg-0: rgba(255, 255, 255, 0.92);
-  --fg-1: rgba(255, 255, 255, 0.82);
-  --fg-2: rgba(255, 255, 255, 0.62);
-  --border: rgba(255, 255, 255, 0.16);
+  color-scheme: dark;
+
+  /* 深色模式背景
+     目标：不要“纯黑压死”，而是通过分层/对比提升可读性 */
+  --bg-0: #15171c; /* App 背景 */
+  --bg-1: #1c2027; /* 面板/卡片 */
+  --bg-2: #242a35; /* 次级面板/输入 */
+  --bg-3: #2e3645; /* 强调分层/hover */
+  
+  /* 深色模式文字 - 保持高对比但避免刺眼纯白 */
+  --fg-0: #f3f6ff; /* 主文本 */
+  --fg-1: #cfd6ea; /* 次级文本 */
+  --fg-2: #9aa6c3; /* 辅助/说明文本 */
+  
+  /* 边框颜色 - 让区块边界更清晰 */
+  --border: rgba(243, 246, 255, 0.16);
+  
+  /* 特殊装饰色 */
+  --accent-dark: #0f1217;
+  /* 暗色背景下斜纹需要“降噪”，否则会吞掉文字对比 */
+  --stripe-color: rgba(255, 250, 0, 0.06);
+  
+  /* 深色模式特有 - 卡片悬浮阴影 */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5);
 }
 
 html,
@@ -31,24 +54,401 @@ body {
   height: 100%;
 }
 
-body {
-  margin: 0;
+/* 主题切换过渡动画 */
+html,
+html * {
+  transition: background-color 0.3s ease, 
+              border-color 0.3s ease, 
+              color 0.15s ease,
+              box-shadow 0.3s ease;
 }
 
-/* 轻量工业斜纹背景（可按 Design.md 再细化） */
+/* 排除某些元素的动画（避免性能问题） */
+html.no-transition,
+html.no-transition * {
+  transition: none !important;
+}
+
+/* 排除滚动条和交互元素的主题过渡 */
+::-webkit-scrollbar,
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-thumb,
+button,
+a,
+input,
+select,
+textarea {
+  transition: background-color 0.15s ease, 
+              border-color 0.15s ease, 
+              color 0.15s ease,
+              box-shadow 0.15s ease,
+              transform 0.15s ease,
+              opacity 0.15s ease;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg-0);
+  color: var(--fg-0);
+}
+
+/* 工业科幻斜纹背景 */
 .bg-bg-0 {
-  background-image: linear-gradient(
-      135deg,
-      rgba(255, 250, 0, 0.08) 0%,
-      rgba(255, 250, 0, 0.08) 6%,
-      rgba(0, 0, 0, 0) 6%,
-      rgba(0, 0, 0, 0) 50%,
-      rgba(255, 250, 0, 0.06) 50%,
-      rgba(255, 250, 0, 0.06) 56%,
-      rgba(0, 0, 0, 0) 56%,
-      rgba(0, 0, 0, 0) 100%
+  background-color: var(--bg-0);
+  background-image: 
+    /* 斜纹图案 */
+    linear-gradient(
+      -45deg,
+      transparent 0%,
+      transparent 40%,
+      var(--stripe-color) 40%,
+      var(--stripe-color) 50%,
+      transparent 50%,
+      transparent 90%,
+      var(--stripe-color) 90%,
+      var(--stripe-color) 100%
     ),
-    radial-gradient(1200px 700px at 10% 10%, rgba(255, 250, 0, 0.08), rgba(0, 0, 0, 0) 60%);
-  background-size: 24px 24px, auto;
+    /* 渐变光晕 */
+    radial-gradient(
+      ellipse 100% 80% at 20% 0%,
+      rgba(255, 250, 0, 0.045) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 80% 100%,
+      rgba(255, 250, 0, 0.03) 0%,
+      transparent 50%
+    );
+  background-size: 8px 8px, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+}
+
+/* 全局滚动条（WebView2/Chromium）——强制覆盖所有可滚动容器 */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  /* 兜底：即使 color-mix 不支持也有颜色 */
+  background-color: var(--fg-2);
+  background-color: color-mix(in srgb, var(--fg-2) 72%, transparent);
+  border-radius: 999px;
+  border: 1px solid transparent; /* 形成“内边距”，视觉更细 */
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--fg-1);
+  background-color: color-mix(in srgb, var(--fg-1) 78%, transparent);
+}
+
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active,
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--fg-0);
+  background-color: color-mix(in srgb, var(--fg-0) 60%, transparent);
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 非 WebKit（如 Firefox）也尽量跟随主题（不影响 WebView2） */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--fg-2) transparent;
+  scrollbar-color: color-mix(in srgb, var(--fg-2) 70%, transparent) transparent;
+}
+
+/* 选中文本颜色 */
+::selection {
+  background-color: var(--brand);
+  color: #000;
+}
+
+/* 输入框聚焦效果 */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* 禁用 Tailwind 默认的 ring */
+*:focus {
+  outline: none;
+}
+
+/* 深色模式表单控件增强 */
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  color: var(--fg-0);
+}
+
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: var(--fg-2);
+}
+
+html[data-theme='dark'] select option {
+  background-color: var(--bg-2);
+  color: var(--fg-0);
+}
+
+/* 动画关键帧 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-brand {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 250, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 250, 0, 0);
+  }
+}
+
+/* 工业风闪烁动画（用于加载状态） */
+@keyframes industrial-flicker {
+  0% { opacity: 0.4; }
+  10% { opacity: 0.8; }
+  11% { opacity: 0.3; }
+  20% { opacity: 0.9; }
+  21% { opacity: 0.5; }
+  40% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* 工具类 */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse-brand {
+  animation: pulse-brand 2s infinite;
+}
+
+.animate-industrial-flicker {
+  animation: industrial-flicker 0.6s ease-out;
+}
+
+/* 工业风装饰条 */
+.industrial-stripe {
+  position: relative;
+}
+
+.industrial-stripe::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--brand);
+  transition: width 0.2s ease;
+}
+
+.industrial-stripe:hover::before {
+  width: 6px;
+}
+
+/* 卡片悬停效果 */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme='dark'] .card-hover:hover {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* 深色模式卡片增强 */
+html[data-theme='dark'] .bg-bg-1 {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme='dark'] .bg-bg-2 {
+  background-color: var(--bg-2);
+}
+
+/* 品牌色高亮文本 */
+.text-brand-glow {
+  color: var(--brand);
+  text-shadow: 0 0 20px rgba(255, 250, 0, 0.5);
+}
+
+/* 数据网格装饰 */
+.data-grid-bg {
+  background-image: 
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ============================================
+   自定义窗口标题栏样式
+   ============================================ */
+
+.titlebar {
+  height: 38px;
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(180deg, #1a1a1a 0%, #141414 100%);
+  border-bottom: 1px solid rgba(255, 250, 0, 0.15);
+  user-select: none;
+  position: relative;
+  z-index: 9999;
+  flex-shrink: 0;
+}
+
+/* 拖拽区域 */
+.titlebar-drag-region {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+  cursor: default;
+}
+
+/* 品牌区域 */
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+/* Logo 容器 */
+.titlebar-logo {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  border-radius: 4px;
+  color: #000;
+  box-shadow: 0 0 12px rgba(255, 250, 0, 0.3);
+}
+
+/* 标题文字 */
+.titlebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.5px;
+}
+
+/* 窗口控制按钮容器 */
+.titlebar-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+/* 窗口控制按钮基础样式 */
+.titlebar-button {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.titlebar-button:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+/* 最小化按钮 */
+.titlebar-button-minimize:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-button-minimize:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 最大化按钮 */
+.titlebar-button-maximize:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-button-maximize:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 关闭按钮 - 特殊处理 */
+.titlebar-button-close:hover {
+  background: #e81123;
+  color: #fff;
+}
+
+.titlebar-button-close:active {
+  background: #bf0f1d;
+  color: #fff;
+}
+
+/* 亮色主题下的标题栏 */
+html:not([data-theme='dark']) .titlebar {
+  background: linear-gradient(180deg, #1f1f1f 0%, #171717 100%);
+}
+
+/* 标题栏底部装饰线 */
+.titlebar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--brand) 0%, transparent 100%);
 }
 

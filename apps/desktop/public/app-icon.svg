@@ -16,17 +16,17 @@
   <!-- Bold frame -->
   <rect x="72" y="72" width="880" height="880" rx="190" fill="none" stroke="#0b0b0e" stroke-width="28" opacity="0.95"/>
 
-  <!-- Monogram -->
+  <!-- Hexagon mark (match TitleBar's Hexagon icon) -->
   <g filter="url(#shadow)">
-    <text x="512" y="610"
-      font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'"
-      font-size="420"
-      font-weight="800"
-      text-anchor="middle"
-      fill="#0b0b0e"
-      letter-spacing="-18">
-      EF
-    </text>
+    <polygon
+      points="512,240 760,384 760,640 512,784 264,640 264,384"
+      fill="none"
+      stroke="#0b0b0e"
+      stroke-width="72"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+      opacity="0.98"
+    />
   </g>
 </svg>
 

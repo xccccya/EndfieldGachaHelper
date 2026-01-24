@@ -40,6 +40,8 @@ export type GameRole = {
 
 export type UserBindingsResponse = HgApiResponse<HgGameBindingsData>;
 
+// ============== 角色池类型 ==============
+
 export type EndFieldCharInfo = {
   charId: string;
   charName: string;
@@ -52,22 +54,67 @@ export type EndFieldCharInfo = {
   seqId: string;
 };
 
-export type EndFieldGachaData = {
+export type EndFieldCharGachaData = {
   list: EndFieldCharInfo[];
   hasMore: boolean;
 };
 
-export type EndFieldGachaResponse = {
+export type EndFieldCharGachaResponse = {
   code: number;
-  data: EndFieldGachaData;
+  data: EndFieldCharGachaData;
   msg: string;
 };
 
-export const END_FIELD_POOL_TYPES = [
+/** 角色池类型 */
+export const END_FIELD_CHAR_POOL_TYPES = [
   'E_CharacterGachaPoolType_Special',
   'E_CharacterGachaPoolType_Standard',
   'E_CharacterGachaPoolType_Beginner',
 ] as const;
 
-export type EndFieldPoolType = (typeof END_FIELD_POOL_TYPES)[number];
+export type EndFieldCharPoolType = (typeof END_FIELD_CHAR_POOL_TYPES)[number];
+
+// ============== 武器池类型 ==============
+
+export type EndFieldWeaponInfo = {
+  weaponId: string;
+  weaponName: string;
+  weaponType: string;
+  gachaTs: string;
+  isNew: boolean;
+  poolId: string;
+  poolName: string;
+  rarity: number;
+  seqId: string;
+};
+
+export type EndFieldWeaponGachaData = {
+  list: EndFieldWeaponInfo[];
+  hasMore: boolean;
+};
+
+export type EndFieldWeaponGachaResponse = {
+  code: number;
+  data: EndFieldWeaponGachaData;
+  msg: string;
+};
+
+/** 武器池类型 */
+export const END_FIELD_WEAPON_POOL_TYPES = [
+  'E_WeaponGachaPoolType_Special',
+  'E_WeaponGachaPoolType_Standard',
+] as const;
+
+export type EndFieldWeaponPoolType = (typeof END_FIELD_WEAPON_POOL_TYPES)[number];
+
+// ============== 通用类型 ==============
+
+/** 抽卡类别 */
+export type GachaCategory = 'character' | 'weapon';
+
+/** 兼容旧代码的别名 */
+export type EndFieldGachaData = EndFieldCharGachaData;
+export type EndFieldGachaResponse = EndFieldCharGachaResponse;
+export const END_FIELD_POOL_TYPES = END_FIELD_CHAR_POOL_TYPES;
+export type EndFieldPoolType = EndFieldCharPoolType;
 

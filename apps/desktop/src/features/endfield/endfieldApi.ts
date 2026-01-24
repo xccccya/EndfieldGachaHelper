@@ -1,10 +1,21 @@
 import type {
   EndFieldCharInfo,
-  EndFieldGachaResponse,
-  EndFieldPoolType,
+  EndFieldCharGachaResponse,
+  EndFieldCharPoolType,
+  EndFieldWeaponInfo,
+  EndFieldWeaponGachaResponse,
+  EndFieldWeaponPoolType,
   UserBindingsResponse,
+  GachaCategory,
 } from '@efgachahelper/shared';
-import { END_FIELD_POOL_TYPES } from '@efgachahelper/shared';
+import { 
+  END_FIELD_CHAR_POOL_TYPES,
+  END_FIELD_WEAPON_POOL_TYPES,
+} from '@efgachahelper/shared';
+
+// 兼容旧代码
+export type { EndFieldCharPoolType as EndFieldPoolType } from '@efgachahelper/shared';
+export { END_FIELD_CHAR_POOL_TYPES as END_FIELD_POOL_TYPES } from '@efgachahelper/shared';
 
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -130,9 +141,11 @@ export async function fetchU8TokenByUid(
   return u8;
 }
 
-export type FetchPoolRecordsInput = {
+// ============== 角色池 API ==============
+
+export type FetchCharPoolRecordsInput = {
   u8Token: string;
-  poolType: EndFieldPoolType;
+  poolType: EndFieldCharPoolType;
   /**
    * Optional pagination cursor (seq_id). When not provided, starts from newest.
    * The API returns descending records; you can persist seqId as cursor.
@@ -140,20 +153,20 @@ export type FetchPoolRecordsInput = {
   seqId?: string;
 };
 
-export type FetchPoolRecordsResult = {
+export type FetchCharPoolRecordsResult = {
   list: EndFieldCharInfo[];
   hasMore: boolean;
-  nextSeqId?: string;
+  nextSeqId?: string | undefined;
 };
 
 /**
- * 拉取单个卡池的一页/多页数据（不做本地保存、不做去重）。
- * 对应 apidemo: `https://ef-webview.hypergryph.com/api/record/char`
+ * 拉取角色池的一页数据
+ * API: `https://ef-webview.hypergryph.com/api/record/char`
  */
-export async function fetchPoolRecords(
-  input: FetchPoolRecordsInput,
+export async function fetchCharPoolRecords(
+  input: FetchCharPoolRecordsInput,
   options?: EndfieldClientOptions,
-): Promise<FetchPoolRecordsResult> {
+): Promise<FetchCharPoolRecordsResult> {
   const { lang, serverId, userAgent, fetcher } = pickOptions(options);
   const base = 'https://ef-webview.hypergryph.com/api/record/char';
 
@@ -167,10 +180,10 @@ export async function fetchPoolRecords(
 
   const url = `${base}?${query.toString()}`;
   const res = await fetcher(url, { method: 'GET', headers: { 'User-Agent': userAgent } });
-  if (!res.ok) throw new HttpError('fetchPoolRecords failed', res.status, url);
+  if (!res.ok) throw new HttpError('fetchCharPoolRecords failed', res.status, url);
 
-  const json = (await res.json()) as EndFieldGachaResponse;
-  if (json.code !== 0) throw new Error(`fetchPoolRecords: api error code=${json.code} msg=${json.msg}`);
+  const json = (await res.json()) as EndFieldCharGachaResponse;
+  if (json.code !== 0) throw new Error(`fetchCharPoolRecords: api error code=${json.code} msg=${json.msg}`);
 
   const list = json.data?.list ?? [];
   const hasMore = Boolean(json.data?.hasMore);
@@ -183,6 +196,66 @@ export async function fetchPoolRecords(
   };
 }
 
+// ============== 武器池 API ==============
+
+export type FetchWeaponPoolRecordsInput = {
+  u8Token: string;
+  poolType: EndFieldWeaponPoolType;
+  seqId?: string;
+};
+
+export type FetchWeaponPoolRecordsResult = {
+  list: EndFieldWeaponInfo[];
+  hasMore: boolean;
+  nextSeqId?: string | undefined;
+};
+
+/**
+ * 拉取武器池的一页数据
+ * API: `https://ef-webview.hypergryph.com/api/record/weapon`
+ */
+export async function fetchWeaponPoolRecords(
+  input: FetchWeaponPoolRecordsInput,
+  options?: EndfieldClientOptions,
+): Promise<FetchWeaponPoolRecordsResult> {
+  const { lang, serverId, userAgent, fetcher } = pickOptions(options);
+  const base = 'https://ef-webview.hypergryph.com/api/record/weapon';
+
+  const query = new URLSearchParams({
+    lang,
+    token: input.u8Token,
+    server_id: serverId,
+    pool_type: input.poolType,
+  });
+  if (input.seqId) query.set('seq_id', input.seqId);
+
+  const url = `${base}?${query.toString()}`;
+  const res = await fetcher(url, { method: 'GET', headers: { 'User-Agent': userAgent } });
+  if (!res.ok) throw new HttpError('fetchWeaponPoolRecords failed', res.status, url);
+
+  const json = (await res.json()) as EndFieldWeaponGachaResponse;
+  if (json.code !== 0) throw new Error(`fetchWeaponPoolRecords: api error code=${json.code} msg=${json.msg}`);
+
+  const list = json.data?.list ?? [];
+  const hasMore = Boolean(json.data?.hasMore);
+  const last = list.at(-1);
+
+  return {
+    list,
+    hasMore,
+    nextSeqId: last?.seqId,
+  };
+}
+
+// ============== 兼容旧代码 ==============
+
+/** @deprecated Use fetchCharPoolRecords instead */
+export type FetchPoolRecordsInput = FetchCharPoolRecordsInput;
+/** @deprecated Use fetchCharPoolRecords instead */
+export type FetchPoolRecordsResult = FetchCharPoolRecordsResult;
+/** @deprecated Use fetchCharPoolRecords instead */
+export const fetchPoolRecords = fetchCharPoolRecords;
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
@@ -192,29 +265,71 @@ function randomInt(min: number, max: number) {
 }
 
 /**
- * 拉取单个卡池的全部记录（直到 hasMore=false）
- * 对应 apidemo 的 while(hasMore) + seq_id 分页逻辑。
+ * 智能延迟函数，用于防止触发 API 风控
+ * 在请求之间添加随机延迟
  */
-export async function fetchAllPoolRecords(
+export async function smartDelay(minMs: number = 800, maxMs: number = 1500): Promise<void> {
+  const delayMs = randomInt(minMs, maxMs);
+  await sleep(delayMs);
+}
+
+export type FetchAllPoolRecordsOptions = EndfieldClientOptions & {
+  /** 分页请求之间的最小延迟 (ms)，默认 800 */
+  minDelayMs?: number;
+  /** 分页请求之间的最大延迟 (ms)，默认 1500 */
+  maxDelayMs?: number;
+  /** 已存在的记录的 seqId 集合，用于增量同步。当遇到已存在的记录时停止拉取 */
+  existingSeqIds?: Set<string>;
+  /** 同步进度回调 */
+  onProgress?: (fetched: number, isIncremental: boolean) => void;
+};
+
+/**
+ * 拉取单个角色卡池的全部记录（直到 hasMore=false 或遇到已存在的记录）
+ * 支持增量同步：当检测到已存在的记录时提前停止，避免重复拉取
+ */
+export async function fetchAllCharPoolRecords(
   u8Token: string,
-  poolType: EndFieldPoolType,
-  options?: EndfieldClientOptions & { minDelayMs?: number; maxDelayMs?: number },
+  poolType: EndFieldCharPoolType,
+  options?: FetchAllPoolRecordsOptions,
 ): Promise<EndFieldCharInfo[]> {
-  const minDelayMs = options?.minDelayMs ?? 500;
-  const maxDelayMs = options?.maxDelayMs ?? 1000;
+  const minDelayMs = options?.minDelayMs ?? 800;
+  const maxDelayMs = options?.maxDelayMs ?? 1500;
+  const existingSeqIds = options?.existingSeqIds;
+  const onProgress = options?.onProgress;
 
   const all: EndFieldCharInfo[] = [];
   let seqId: string | undefined;
+  let stoppedEarly = false;
 
-  // The API returns newest-first. We keep accumulating as-is.
   for (;;) {
-    const page = await fetchPoolRecords(
+    const page = await fetchCharPoolRecords(
       seqId ? { u8Token, poolType, seqId } : { u8Token, poolType },
       options,
     );
 
     if (!page.list.length) break;
-    all.push(...page.list);
+
+    if (existingSeqIds && existingSeqIds.size > 0) {
+      const newRecords: EndFieldCharInfo[] = [];
+      for (const record of page.list) {
+        if (existingSeqIds.has(record.seqId)) {
+          stoppedEarly = true;
+          break;
+        }
+        newRecords.push(record);
+      }
+      all.push(...newRecords);
+      
+      if (stoppedEarly) {
+        onProgress?.(all.length, true);
+        break;
+      }
+    } else {
+      all.push(...page.list);
+    }
+
+    onProgress?.(all.length, false);
 
     if (!page.hasMore) break;
     seqId = page.nextSeqId;
@@ -226,16 +341,246 @@ export async function fetchAllPoolRecords(
 }
 
 /**
- * 拉取全部卡池的数据（按 apidemo 的 POOL_TYPES 顺序）
+ * 拉取单个武器卡池的全部记录（直到 hasMore=false 或遇到已存在的记录）
+ * 支持增量同步：当检测到已存在的记录时提前停止，避免重复拉取
  */
-export async function fetchAllPools(
+export async function fetchAllWeaponPoolRecords(
   u8Token: string,
-  options?: EndfieldClientOptions,
-): Promise<Record<EndFieldPoolType, EndFieldCharInfo[]>> {
-  const result = {} as Record<EndFieldPoolType, EndFieldCharInfo[]>;
-  for (const poolType of END_FIELD_POOL_TYPES) {
-    result[poolType] = await fetchAllPoolRecords(u8Token, poolType, options);
+  poolType: EndFieldWeaponPoolType,
+  options?: FetchAllPoolRecordsOptions,
+): Promise<EndFieldWeaponInfo[]> {
+  const minDelayMs = options?.minDelayMs ?? 800;
+  const maxDelayMs = options?.maxDelayMs ?? 1500;
+  const existingSeqIds = options?.existingSeqIds;
+  const onProgress = options?.onProgress;
+
+  const all: EndFieldWeaponInfo[] = [];
+  let seqId: string | undefined;
+  let stoppedEarly = false;
+
+  for (;;) {
+    const page = await fetchWeaponPoolRecords(
+      seqId ? { u8Token, poolType, seqId } : { u8Token, poolType },
+      options,
+    );
+
+    if (!page.list.length) break;
+
+    if (existingSeqIds && existingSeqIds.size > 0) {
+      const newRecords: EndFieldWeaponInfo[] = [];
+      for (const record of page.list) {
+        if (existingSeqIds.has(record.seqId)) {
+          stoppedEarly = true;
+          break;
+        }
+        newRecords.push(record);
+      }
+      all.push(...newRecords);
+      
+      if (stoppedEarly) {
+        onProgress?.(all.length, true);
+        break;
+      }
+    } else {
+      all.push(...page.list);
+    }
+
+    onProgress?.(all.length, false);
+
+    if (!page.hasMore) break;
+    seqId = page.nextSeqId;
+
+    await sleep(randomInt(minDelayMs, maxDelayMs));
   }
+
+  return all;
+}
+
+/** @deprecated Use fetchAllCharPoolRecords instead */
+export const fetchAllPoolRecords = fetchAllCharPoolRecords;
+
+// ============== 角色池批量拉取 ==============
+
+export type FetchAllCharPoolsOptions = FetchAllPoolRecordsOptions & {
+  /** 卡池切换之间的最小延迟 (ms)，默认 1500 */
+  poolSwitchMinDelayMs?: number;
+  /** 卡池切换之间的最大延迟 (ms)，默认 2500 */
+  poolSwitchMaxDelayMs?: number;
+  /** 按卡池类型提供的已存在记录 seqId 集合，用于增量同步 */
+  existingSeqIdsByPool?: Partial<Record<EndFieldCharPoolType, Set<string>>>;
+  /** 卡池同步进度回调 */
+  onPoolProgress?: (poolType: string, poolIndex: number, totalPools: number, recordsFetched: number) => void;
+};
+
+/**
+ * 拉取全部角色卡池的数据
+ */
+export async function fetchAllCharPools(
+  u8Token: string,
+  options?: FetchAllCharPoolsOptions,
+): Promise<Record<EndFieldCharPoolType, EndFieldCharInfo[]>> {
+  const poolSwitchMinDelayMs = options?.poolSwitchMinDelayMs ?? 1500;
+  const poolSwitchMaxDelayMs = options?.poolSwitchMaxDelayMs ?? 2500;
+  const existingSeqIdsByPool = options?.existingSeqIdsByPool;
+  const onPoolProgress = options?.onPoolProgress;
+
+  const result = {} as Record<EndFieldCharPoolType, EndFieldCharInfo[]>;
+  
+  for (let i = 0; i < END_FIELD_CHAR_POOL_TYPES.length; i++) {
+    const poolType = END_FIELD_CHAR_POOL_TYPES[i];
+    if (!poolType) continue;
+    
+    const existingSeqIds = existingSeqIdsByPool?.[poolType];
+    
+    const fetchOptions: FetchAllPoolRecordsOptions = {
+      ...options,
+      onProgress: (fetched) => {
+        onPoolProgress?.(poolType, i + 1, END_FIELD_CHAR_POOL_TYPES.length, fetched);
+      },
+    };
+    if (existingSeqIds) {
+      fetchOptions.existingSeqIds = existingSeqIds;
+    }
+    
+    const records = await fetchAllCharPoolRecords(u8Token, poolType, fetchOptions);
+    
+    result[poolType] = records;
+    onPoolProgress?.(poolType, i + 1, END_FIELD_CHAR_POOL_TYPES.length, records.length);
+    
+    if (i < END_FIELD_CHAR_POOL_TYPES.length - 1) {
+      await sleep(randomInt(poolSwitchMinDelayMs, poolSwitchMaxDelayMs));
+    }
+  }
+  
   return result;
 }
+
+// ============== 武器池批量拉取 ==============
+
+export type FetchAllWeaponPoolsOptions = FetchAllPoolRecordsOptions & {
+  poolSwitchMinDelayMs?: number;
+  poolSwitchMaxDelayMs?: number;
+  existingSeqIdsByPool?: Partial<Record<EndFieldWeaponPoolType, Set<string>>>;
+  onPoolProgress?: (poolType: string, poolIndex: number, totalPools: number, recordsFetched: number) => void;
+};
+
+/**
+ * 拉取全部武器卡池的数据
+ */
+export async function fetchAllWeaponPools(
+  u8Token: string,
+  options?: FetchAllWeaponPoolsOptions,
+): Promise<Record<EndFieldWeaponPoolType, EndFieldWeaponInfo[]>> {
+  const poolSwitchMinDelayMs = options?.poolSwitchMinDelayMs ?? 1500;
+  const poolSwitchMaxDelayMs = options?.poolSwitchMaxDelayMs ?? 2500;
+  const existingSeqIdsByPool = options?.existingSeqIdsByPool;
+  const onPoolProgress = options?.onPoolProgress;
+
+  const result = {} as Record<EndFieldWeaponPoolType, EndFieldWeaponInfo[]>;
+  
+  for (let i = 0; i < END_FIELD_WEAPON_POOL_TYPES.length; i++) {
+    const poolType = END_FIELD_WEAPON_POOL_TYPES[i];
+    if (!poolType) continue;
+    
+    const existingSeqIds = existingSeqIdsByPool?.[poolType];
+    
+    const fetchOptions: FetchAllPoolRecordsOptions = {
+      ...options,
+      onProgress: (fetched) => {
+        onPoolProgress?.(poolType, i + 1, END_FIELD_WEAPON_POOL_TYPES.length, fetched);
+      },
+    };
+    if (existingSeqIds) {
+      fetchOptions.existingSeqIds = existingSeqIds;
+    }
+    
+    const records = await fetchAllWeaponPoolRecords(u8Token, poolType, fetchOptions);
+    
+    result[poolType] = records;
+    onPoolProgress?.(poolType, i + 1, END_FIELD_WEAPON_POOL_TYPES.length, records.length);
+    
+    if (i < END_FIELD_WEAPON_POOL_TYPES.length - 1) {
+      await sleep(randomInt(poolSwitchMinDelayMs, poolSwitchMaxDelayMs));
+    }
+  }
+  
+  return result;
+}
+
+// ============== 全量同步（角色 + 武器） ==============
+
+export type AllGachaRecords = {
+  character: Record<EndFieldCharPoolType, EndFieldCharInfo[]>;
+  weapon: Record<EndFieldWeaponPoolType, EndFieldWeaponInfo[]>;
+};
+
+export type FetchAllGachaOptions = Omit<FetchAllPoolRecordsOptions, 'onProgress' | 'existingSeqIds'> & {
+  poolSwitchMinDelayMs?: number;
+  poolSwitchMaxDelayMs?: number;
+  /** 类别切换之间的延迟 (ms)，默认 2000 */
+  categorySwitchDelayMs?: number;
+  existingCharSeqIdsByPool?: Partial<Record<EndFieldCharPoolType, Set<string>>>;
+  existingWeaponSeqIdsByPool?: Partial<Record<EndFieldWeaponPoolType, Set<string>>>;
+  /** 同步进度回调 */
+  onProgress?: (category: GachaCategory, poolType: string, poolIndex: number, totalPools: number, recordsFetched: number) => void;
+};
+
+/**
+ * 拉取所有抽卡记录（角色 + 武器）
+ */
+export async function fetchAllGachaRecords(
+  u8Token: string,
+  options?: FetchAllGachaOptions,
+): Promise<AllGachaRecords> {
+  const categorySwitchDelayMs = options?.categorySwitchDelayMs ?? 2000;
+  
+  // 提取基础选项（使用条件展开避免 exactOptionalPropertyTypes 问题）
+  const baseOptions: EndfieldClientOptions = {
+    ...(options?.lang !== undefined && { lang: options.lang }),
+    ...(options?.serverId !== undefined && { serverId: options.serverId }),
+    ...(options?.userAgent !== undefined && { userAgent: options.userAgent }),
+    ...(options?.fetcher !== undefined && { fetcher: options.fetcher }),
+  };
+  
+  // 1. 拉取角色池
+  const charPoolOptions: FetchAllCharPoolsOptions = {
+    ...baseOptions,
+    ...(options?.minDelayMs !== undefined && { minDelayMs: options.minDelayMs }),
+    ...(options?.maxDelayMs !== undefined && { maxDelayMs: options.maxDelayMs }),
+    ...(options?.poolSwitchMinDelayMs !== undefined && { poolSwitchMinDelayMs: options.poolSwitchMinDelayMs }),
+    ...(options?.poolSwitchMaxDelayMs !== undefined && { poolSwitchMaxDelayMs: options.poolSwitchMaxDelayMs }),
+    ...(options?.existingCharSeqIdsByPool !== undefined && { existingSeqIdsByPool: options.existingCharSeqIdsByPool }),
+    onPoolProgress: (poolType, poolIndex, totalPools, recordsFetched) => {
+      options?.onProgress?.('character', poolType, poolIndex, totalPools, recordsFetched);
+    },
+  };
+  const charRecords = await fetchAllCharPools(u8Token, charPoolOptions);
+
+  // 类别切换延迟
+  await sleep(categorySwitchDelayMs);
+
+  // 2. 拉取武器池
+  const weaponPoolOptions: FetchAllWeaponPoolsOptions = {
+    ...baseOptions,
+    ...(options?.minDelayMs !== undefined && { minDelayMs: options.minDelayMs }),
+    ...(options?.maxDelayMs !== undefined && { maxDelayMs: options.maxDelayMs }),
+    ...(options?.poolSwitchMinDelayMs !== undefined && { poolSwitchMinDelayMs: options.poolSwitchMinDelayMs }),
+    ...(options?.poolSwitchMaxDelayMs !== undefined && { poolSwitchMaxDelayMs: options.poolSwitchMaxDelayMs }),
+    ...(options?.existingWeaponSeqIdsByPool !== undefined && { existingSeqIdsByPool: options.existingWeaponSeqIdsByPool }),
+    onPoolProgress: (poolType, poolIndex, totalPools, recordsFetched) => {
+      options?.onProgress?.('weapon', poolType, poolIndex, totalPools, recordsFetched);
+    },
+  };
+  const weaponRecords = await fetchAllWeaponPools(u8Token, weaponPoolOptions);
+
+  return {
+    character: charRecords,
+    weapon: weaponRecords,
+  };
+}
+
+/** @deprecated Use fetchAllCharPools instead */
+export type FetchAllPoolsOptions = FetchAllCharPoolsOptions;
+/** @deprecated Use fetchAllCharPools instead */
+export const fetchAllPools = fetchAllCharPools;
 

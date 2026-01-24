@@ -2,6 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "references": [{ "path": "../../packages/shared" }],
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@efgachahelper/shared": ["../../packages/shared/src/index.ts"]
+    },
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
