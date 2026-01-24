@@ -6,6 +6,8 @@
     "start": "node dist/main.js",
     "start:dev": "node ./scripts/dev.mjs",
     "build": "tsc -b && node ./scripts/prisma-generate.mjs",
+    "build:force": "tsc -b --force && node ./scripts/prisma-generate.mjs",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "pretypecheck": "node ./scripts/prisma-generate.mjs",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
