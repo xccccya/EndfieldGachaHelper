@@ -26,6 +26,7 @@ export default {
         },
         accent: {
           dark: 'var(--accent-dark)',
+          'btn-text': 'var(--accent-btn-text)',
         },
       },
       borderRadius: {

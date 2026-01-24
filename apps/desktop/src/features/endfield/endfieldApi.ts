@@ -10,7 +10,6 @@ import type {
 } from '@efgachahelper/shared';
 import { 
   END_FIELD_CHAR_POOL_TYPES,
-  END_FIELD_WEAPON_POOL_TYPES,
 } from '@efgachahelper/shared';
 
 // 兼容旧代码
@@ -200,7 +199,8 @@ export async function fetchCharPoolRecords(
 
 export type FetchWeaponPoolRecordsInput = {
   u8Token: string;
-  poolType: EndFieldWeaponPoolType;
+  /** @deprecated 武器池不再区分类型 */
+  poolType?: EndFieldWeaponPoolType;
   seqId?: string;
 };
 
@@ -213,6 +213,7 @@ export type FetchWeaponPoolRecordsResult = {
 /**
  * 拉取武器池的一页数据
  * API: `https://ef-webview.hypergryph.com/api/record/weapon`
+ * 注意：武器池不区分类型，统一请求
  */
 export async function fetchWeaponPoolRecords(
   input: FetchWeaponPoolRecordsInput,
@@ -221,11 +222,11 @@ export async function fetchWeaponPoolRecords(
   const { lang, serverId, userAgent, fetcher } = pickOptions(options);
   const base = 'https://ef-webview.hypergryph.com/api/record/weapon';
 
+  // 武器池不需要 pool_type 参数
   const query = new URLSearchParams({
     lang,
     token: input.u8Token,
     server_id: serverId,
-    pool_type: input.poolType,
   });
   if (input.seqId) query.set('seq_id', input.seqId);
 
@@ -341,12 +342,13 @@ export async function fetchAllCharPoolRecords(
 }
 
 /**
- * 拉取单个武器卡池的全部记录（直到 hasMore=false 或遇到已存在的记录）
+ * 拉取全部武器记录（直到 hasMore=false 或遇到已存在的记录）
+ * 武器池不区分类型，统一请求
  * 支持增量同步：当检测到已存在的记录时提前停止，避免重复拉取
  */
 export async function fetchAllWeaponPoolRecords(
   u8Token: string,
-  poolType: EndFieldWeaponPoolType,
+  _poolType?: EndFieldWeaponPoolType, // 保留参数兼容旧调用，但不使用
   options?: FetchAllPoolRecordsOptions,
 ): Promise<EndFieldWeaponInfo[]> {
   const minDelayMs = options?.minDelayMs ?? 800;
@@ -360,7 +362,7 @@ export async function fetchAllWeaponPoolRecords(
 
   for (;;) {
     const page = await fetchWeaponPoolRecords(
-      seqId ? { u8Token, poolType, seqId } : { u8Token, poolType },
+      seqId ? { u8Token, seqId } : { u8Token },
       options,
     );
 
@@ -465,46 +467,44 @@ export type FetchAllWeaponPoolsOptions = FetchAllPoolRecordsOptions & {
 };
 
 /**
- * 拉取全部武器卡池的数据
+ * 拉取全部武器记录
+ * 武器池不区分类型，统一请求一次即可
  */
 export async function fetchAllWeaponPools(
   u8Token: string,
   options?: FetchAllWeaponPoolsOptions,
 ): Promise<Record<EndFieldWeaponPoolType, EndFieldWeaponInfo[]>> {
-  const poolSwitchMinDelayMs = options?.poolSwitchMinDelayMs ?? 1500;
-  const poolSwitchMaxDelayMs = options?.poolSwitchMaxDelayMs ?? 2500;
   const existingSeqIdsByPool = options?.existingSeqIdsByPool;
   const onPoolProgress = options?.onPoolProgress;
 
-  const result = {} as Record<EndFieldWeaponPoolType, EndFieldWeaponInfo[]>;
+  // 武器池只有一种类型
+  const poolType: EndFieldWeaponPoolType = 'E_WeaponGachaPoolType_All';
   
-  for (let i = 0; i < END_FIELD_WEAPON_POOL_TYPES.length; i++) {
-    const poolType = END_FIELD_WEAPON_POOL_TYPES[i];
-    if (!poolType) continue;
-    
-    const existingSeqIds = existingSeqIdsByPool?.[poolType];
-    
-    const fetchOptions: FetchAllPoolRecordsOptions = {
-      ...options,
-      onProgress: (fetched) => {
-        onPoolProgress?.(poolType, i + 1, END_FIELD_WEAPON_POOL_TYPES.length, fetched);
-      },
-    };
-    if (existingSeqIds) {
-      fetchOptions.existingSeqIds = existingSeqIds;
-    }
-    
-    const records = await fetchAllWeaponPoolRecords(u8Token, poolType, fetchOptions);
-    
-    result[poolType] = records;
-    onPoolProgress?.(poolType, i + 1, END_FIELD_WEAPON_POOL_TYPES.length, records.length);
-    
-    if (i < END_FIELD_WEAPON_POOL_TYPES.length - 1) {
-      await sleep(randomInt(poolSwitchMinDelayMs, poolSwitchMaxDelayMs));
+  // 合并所有已存在的 seqId（兼容旧数据）
+  const existingSeqIds = new Set<string>();
+  if (existingSeqIdsByPool) {
+    for (const seqIdSet of Object.values(existingSeqIdsByPool)) {
+      if (seqIdSet) {
+        for (const seqId of seqIdSet) {
+          existingSeqIds.add(seqId);
+        }
+      }
     }
   }
   
-  return result;
+  const fetchOptions: FetchAllPoolRecordsOptions = {
+    ...options,
+    ...(existingSeqIds.size > 0 && { existingSeqIds }),
+    onProgress: (fetched) => {
+      onPoolProgress?.(poolType, 1, 1, fetched);
+    },
+  };
+  
+  const records = await fetchAllWeaponPoolRecords(u8Token, undefined, fetchOptions);
+  
+  onPoolProgress?.(poolType, 1, 1, records.length);
+  
+  return { [poolType]: records } as Record<EndFieldWeaponPoolType, EndFieldWeaponInfo[]>;
 }
 
 // ============== 全量同步（角色 + 武器） ==============

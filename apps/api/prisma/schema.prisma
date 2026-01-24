@@ -53,15 +53,43 @@ model GachaRecord {
   // 桌面端生成：稳定、可复算，用于幂等去重
   recordUid     String   @unique
 
-  pool          String
-  itemName      String
+  // 通用字段
+  category      String   // 'character' | 'weapon'
+  poolId        String
+  poolName      String
+  itemId        String   // charId 或 weaponId
+  itemName      String   // charName 或 weaponName
   rarity        Int
-  pulledAt      DateTime
+  isNew         Boolean  @default(false)
+  gachaTs       String   // 原始时间戳字符串
+  seqId         String   // 序列 ID
+  fetchedAt     BigInt   // 抓取时间戳（毫秒）
 
-  createdAt DateTime @default(now())
+  // 角色特有字段
+  isFree        Boolean? // 仅角色有
+
+  // 武器特有字段
+  weaponType    String?  // 仅武器有
+
+  createdAt     DateTime @default(now())
 
   gameAccount GameAccount @relation(fields: [gameAccountId], references: [id], onDelete: Cascade)
 
-  @@index([gameAccountId, pulledAt])
+  @@unique([gameAccountId, seqId, category], name: "unique_gacha_record")
+  @@index([gameAccountId, gachaTs])
+  @@index([gameAccountId, category])
+}
+
+// 邮箱验证码
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  type      String   // "register" | "reset"
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email, type])
 }
 

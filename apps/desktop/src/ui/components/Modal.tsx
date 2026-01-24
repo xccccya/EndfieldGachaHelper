@@ -8,6 +8,8 @@ export type ModalProps = {
   children: React.ReactNode;
   /** 最大宽度 tailwind max-w-*（默认 max-w-3xl） */
   maxWidthClassName?: string;
+  /** 背景遮罩模式：normal(默认), light(浅色，用于嵌套弹窗), none(无遮罩) */
+  backdrop?: 'normal' | 'light' | 'none';
 };
 
 export function Modal({
@@ -16,6 +18,7 @@ export function Modal({
   title,
   children,
   maxWidthClassName = 'max-w-3xl',
+  backdrop = 'normal',
 }: ModalProps) {
   const portalRoot = useMemo(() => document.body, []);
   const [present, setPresent] = useState(open);
@@ -49,13 +52,20 @@ export function Modal({
 
   if (!present) return null;
 
+  // 背景遮罩样式
+  const backdropClass = {
+    normal: 'bg-black/60 backdrop-blur-sm',
+    light: 'bg-black/10 backdrop-blur-md',
+    none: 'bg-transparent',
+  }[backdrop];
+
   return createPortal(
-    <div className="fixed inset-0 z-[10000]">
+    <div className={`fixed inset-0 ${backdrop === 'light' ? 'z-[10001]' : 'z-[10000]'}`}>
       {/* Backdrop */}
       <button
         type="button"
         className={`
-          absolute inset-0 bg-black/60 backdrop-blur-sm
+          absolute inset-0 ${backdropClass}
           transition-opacity duration-150
           ${open ? 'opacity-100' : 'opacity-0'}
         `}

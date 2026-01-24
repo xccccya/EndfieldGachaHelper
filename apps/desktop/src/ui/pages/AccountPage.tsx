@@ -169,6 +169,7 @@ export function AccountPage() {
                   ref={tokenHelpButtonRef}
                   onClick={() => setTokenHelpOpen((v) => !v)}
                   icon={<Info size={20} />}
+                  className="border border-brand/25 hover:border-brand/45 hover:bg-bg-3/80"
                 >
                   {t('account.howToGetToken')}
                 </Button>
@@ -183,8 +184,9 @@ export function AccountPage() {
         open={tokenHelpOpen}
         onOpenChange={setTokenHelpOpen}
         maxWidthClassName="max-w-4xl"
+        backdrop="light"
       >
-        <div className="p-6 space-y-6 bg-gradient-to-b from-bg-2 to-bg-2/80">
+        <div className="p-6 space-y-6 bg-bg-1">
           <div className="flex items-start justify-between gap-3">
             <div className="font-semibold text-fg-0 flex items-center gap-2.5">
               <Info size={18} className="text-brand" />

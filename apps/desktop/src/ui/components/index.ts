@@ -6,3 +6,6 @@ export { TitleBar } from './TitleBar';
 export { ConfirmDialog } from './ConfirmDialog';
 export { Popover } from './Popover';
 export { Modal } from './Modal';
+export { SyncAuthModal } from './SyncAuthModal';
+export { LegalModal } from './LegalModal';
+export { ParticleBackground } from './ParticleBackground';

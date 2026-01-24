@@ -1,31 +1,53 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto, RegisterDto } from './dto/auth.dto';
+import { CheckEmailDto, LoginDto, RefreshDto, RegisterDto, ResetPasswordDto, SendCodeDto } from './dto/auth.dto';
 
 @ApiTags('auth')
 @Controller()
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  @Post('auth/register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto.email, dto.password);
+  @ApiOperation({ summary: '发送验证码' })
+  @Post('auth/send-code')
+  sendCode(@Body() dto: SendCodeDto) {
+    return this.auth.sendVerificationCode(dto.email, dto.type);
   }
 
+  @ApiOperation({ summary: '检查邮箱是否已注册' })
+  @Post('auth/check-email')
+  checkEmail(@Body() dto: CheckEmailDto) {
+    return this.auth.checkEmail(dto.email);
+  }
+
+  @ApiOperation({ summary: '注册（需验证码）' })
+  @Post('auth/register')
+  register(@Body() dto: RegisterDto) {
+    return this.auth.register(dto.email, dto.password, dto.code);
+  }
+
+  @ApiOperation({ summary: '登录' })
   @Post('auth/login')
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password);
   }
 
+  @ApiOperation({ summary: '重置密码（需验证码）' })
+  @Post('auth/reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto.email, dto.code, dto.newPassword);
+  }
+
+  @ApiOperation({ summary: '刷新 Token' })
   @Post('auth/refresh')
   refresh(@Body() dto: RefreshDto) {
     return this.auth.refresh(dto.refreshToken);
   }
 
+  @ApiOperation({ summary: '登出' })
   @Post('auth/logout')
   logout(@Body() dto: RefreshDto) {
     return this.auth.logout(dto.refreshToken);
@@ -33,6 +55,7 @@ export class AuthController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '获取当前用户信息' })
   @Get('me')
   me(@Req() req: FastifyRequest) {
     // JwtStrategy 里把 user 放到 req.user

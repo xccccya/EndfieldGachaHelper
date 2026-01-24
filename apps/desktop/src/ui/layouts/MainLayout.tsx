@@ -17,10 +17,16 @@ import {
   UserPlus,
   ChevronRight,
   User,
+  Cloud,
+  CloudOff,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { setTheme, useTheme } from '../theme';
 import { useAccounts } from '../../hooks/useEndfield';
-import { TitleBar } from '../components';
+import { useSyncConfig, useSyncHealth } from '../../hooks/useSync';
+import { TitleBar, ParticleBackground } from '../components';
+import { formatDistanceToNow } from '../../lib/dateUtils';
 
 type NavItem = {
   path: string;
@@ -33,6 +39,7 @@ const navItems: NavItem[] = [
   { path: '/', labelKey: 'nav.records', icon: <History size={20} /> },
   { path: '/sync', labelKey: 'nav.sync', icon: <RefreshCw size={20} /> },
   { path: '/account', labelKey: 'nav.account', icon: <UserPlus size={20} /> },
+  { path: '/cloud-sync', labelKey: 'nav.cloudSync', icon: <Cloud size={20} /> },
   { path: '/settings', labelKey: 'nav.settings', icon: <Settings size={20} /> },
 ];
 
@@ -41,13 +48,17 @@ export function MainLayout() {
   const theme = useTheme();
   const location = useLocation();
   const { activeAccount } = useAccounts();
+  const { status, lastSyncAt } = useSyncConfig();
+  useSyncHealth(); // 初始化健康检查
 
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
   // 获取当前页面标题
   const getCurrentTitle = () => {
     const path = location.pathname.slice(1) || 'records';
-    return t(`nav.${path}`);
+    // 将路径格式 (cloud-sync) 转换为 i18n key 格式 (cloudSync)
+    const navKey = path.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    return t(`nav.${navKey}`);
   };
 
   // 切换主题（带动画）
@@ -56,7 +67,15 @@ export function MainLayout() {
   }, [nextTheme]);
 
   return (
-    <div className="h-dvh flex flex-col bg-bg-0 text-fg-0 overflow-hidden">
+    <div className="h-dvh flex flex-col bg-bg-0 text-fg-0 overflow-hidden relative">
+      {/* 粒子背景 */}
+      <ParticleBackground 
+        particleCount={100}
+        connectParticles={true}
+        connectDistance={100}
+        maxSpeed={0.3}
+      />
+      
       {/* 自定义标题栏 */}
       <TitleBar />
 
@@ -136,16 +155,51 @@ export function MainLayout() {
               </NavLink>
             )}
 
-            {/* 版本信息 */}
-            <div className="px-4 py-3 bg-bg-2/50 flex items-center justify-between text-xs text-fg-1">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                {t('common.online')}
+            {/* 同步状态 */}
+            <NavLink
+              to="/cloud-sync"
+              className="group px-4 py-3 bg-bg-2/50 flex items-center justify-between text-xs text-fg-1 hover:bg-bg-2 transition-colors"
+            >
+              <span className="flex items-center gap-1.5 min-w-0 flex-1">
+                {/* 状态图标 */}
+                {status === 'not_logged_in' && (
+                  <>
+                    <CloudOff size={14} className="text-fg-2 shrink-0" />
+                    <span className="truncate">{t('syncStatus.notLoggedIn', '未登录同步账号')}</span>
+                  </>
+                )}
+                {status === 'disabled' && (
+                  <>
+                    <Cloud size={14} className="text-orange-400 shrink-0" />
+                    <span className="truncate">{t('syncStatus.disabled', '同步已关闭')}</span>
+                  </>
+                )}
+                {status === 'enabled' && (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+                    <span className="truncate">
+                      {lastSyncAt 
+                        ? t('syncStatus.lastSync', '同步于 {{time}}', { time: formatDistanceToNow(lastSyncAt) })
+                        : t('syncStatus.enabled', '同步已启用')
+                      }
+                    </span>
+                  </>
+                )}
+                {status === 'syncing' && (
+                  <>
+                    <Loader2 size={14} className="text-blue-400 animate-spin shrink-0" />
+                    <span className="truncate">{t('syncStatus.syncing', '正在同步...')}</span>
+                  </>
+                )}
+                {status === 'error' && (
+                  <>
+                    <AlertCircle size={14} className="text-red-400 shrink-0" />
+                    <span className="truncate text-red-400">{t('syncStatus.error', '连接异常')}</span>
+                  </>
+                )}
               </span>
-              <span className="px-2 py-0.5 rounded bg-brand/20 text-brand font-mono">
-                v0.1.0
-              </span>
-            </div>
+              <ChevronRight size={14} className="text-fg-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </NavLink>
           </div>
         </aside>
 

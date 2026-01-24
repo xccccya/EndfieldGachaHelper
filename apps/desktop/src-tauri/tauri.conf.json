@@ -29,6 +29,7 @@
   },
   "bundle": {
     "active": true,
+    "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",
@@ -37,7 +38,25 @@
       "icons/icon.png",
       "icons/icon.ico",
       "icons/icon.icns"
-    ]
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "nsis": {
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "icons/icon.png"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ4RjIyRTRGNjEzRjc0MTgKUldRWWREOWhUeTd5U0tJTFgrVEltUFk1V1NSNFFXUkUrV3lzbnpNWTZNUThkNWxTV2oxUjRLUjQK",
+      "endpoints": ["https://github.com/xccccya/EndfieldGachaHelper/releases/latest/download/latest.json"]
+    }
   }
 }
 

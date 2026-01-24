@@ -23,7 +23,9 @@
         { "url": "https://binding-api-account-prod.hypergryph.com/**" },
         { "url": "https://ef-webview.hypergryph.com/**" },
         { "url": "https://web-api.hypergryph.com/**" },
-        { "url": "https://user.hypergryph.com/**" }
+        { "url": "https://user.hypergryph.com/**" },
+        { "url": "http://localhost:3011/**" },
+        { "url": "http://127.0.0.1:3011/**" }
       ]
     },
     {
@@ -33,7 +35,9 @@
         { "url": "https://binding-api-account-prod.hypergryph.com/**" },
         { "url": "https://ef-webview.hypergryph.com/**" },
         { "url": "https://web-api.hypergryph.com/**" },
-        { "url": "https://user.hypergryph.com/**" }
+        { "url": "https://user.hypergryph.com/**" },
+        { "url": "http://localhost:3011/**" },
+        { "url": "http://127.0.0.1:3011/**" }
       ]
     },
     {
@@ -43,7 +47,9 @@
         { "url": "https://binding-api-account-prod.hypergryph.com/**" },
         { "url": "https://ef-webview.hypergryph.com/**" },
         { "url": "https://web-api.hypergryph.com/**" },
-        { "url": "https://user.hypergryph.com/**" }
+        { "url": "https://user.hypergryph.com/**" },
+        { "url": "http://localhost:3011/**" },
+        { "url": "http://127.0.0.1:3011/**" }
       ]
     },
     {
@@ -53,7 +59,9 @@
         { "url": "https://binding-api-account-prod.hypergryph.com/**" },
         { "url": "https://ef-webview.hypergryph.com/**" },
         { "url": "https://web-api.hypergryph.com/**" },
-        { "url": "https://user.hypergryph.com/**" }
+        { "url": "https://user.hypergryph.com/**" },
+        { "url": "http://localhost:3011/**" },
+        { "url": "http://127.0.0.1:3011/**" }
       ]
     },
     "fs:default",
@@ -77,7 +85,10 @@
     "sql:allow-load",
     "sql:allow-execute",
     "sql:allow-select",
-    "sql:allow-close"
+    "sql:allow-close",
+    "updater:default",
+    "process:default",
+    "process:allow-restart"
   ]
 }
 

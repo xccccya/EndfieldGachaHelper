@@ -20,6 +20,9 @@
   /* 工业风特殊色 */
   --accent-dark: #1f1f1f;
   --stripe-color: rgba(255, 250, 0, 0.15);
+  
+  /* Accent 按钮文字颜色 */
+  --accent-btn-text: #000000;
 }
 
 html[data-theme='dark'] {
@@ -47,6 +50,9 @@ html[data-theme='dark'] {
   
   /* 深色模式特有 - 卡片悬浮阴影 */
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5);
+  
+  /* Accent 按钮文字颜色 - 深色模式下使用白色 */
+  --accent-btn-text: #ffffff;
 }
 
 html,

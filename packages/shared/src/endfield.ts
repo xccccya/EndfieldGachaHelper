@@ -99,10 +99,13 @@ export type EndFieldWeaponGachaResponse = {
   msg: string;
 };
 
-/** 武器池类型 */
+/** 
+ * 武器池类型
+ * 注意：武器池 API 不需要区分类型，统一请求即可
+ * 保留类型定义用于兼容旧代码
+ */
 export const END_FIELD_WEAPON_POOL_TYPES = [
-  'E_WeaponGachaPoolType_Special',
-  'E_WeaponGachaPoolType_Standard',
+  'E_WeaponGachaPoolType_All',  // 武器池不区分类型
 ] as const;
 
 export type EndFieldWeaponPoolType = (typeof END_FIELD_WEAPON_POOL_TYPES)[number];

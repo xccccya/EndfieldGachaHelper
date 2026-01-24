@@ -25,4 +25,5 @@ export type ExportFile = {
 };
 
 export * from './endfield';
+export * from './sync';
 

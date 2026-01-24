@@ -18,31 +18,23 @@ import { Card, CardHeader, CardContent, Button, Badge, RarityBadge, Input } from
 import { useAccounts } from '../../hooks/useEndfield';
 import { getAllUnifiedRecords, type UnifiedGachaRecord } from '../../lib/storage';
 import { formatDate } from '../../lib/dateUtils';
-import type { GachaCategory } from '@efgachahelper/shared';
 
-/**
- * 类别筛选配置
- */
-const CATEGORY_FILTERS: { value: GachaCategory | 'all'; labelKey: string }[] = [
-  { value: 'all', labelKey: 'records.allCategories' },
-  { value: 'character', labelKey: 'records.characterCategory' },
-  { value: 'weapon', labelKey: 'records.weaponCategory' },
-];
+/** 卡池类型筛选 */
+type PoolFilter = 'all' | 'special' | 'weapon' | 'standard' | 'beginner';
 
 /**
  * 卡池筛选配置
- * 角色池: special_1_0_1, standard_1_0_1, beginner_1_0_1
- * 武器池: weponbox_1_0_1, weaponbox_constant_2
+ * - 限定池：角色池，poolId 不是 standard 或 beginner
+ * - 武器池：所有武器记录
+ * - 常驻池：角色池，poolId === "standard"
+ * - 新手池：角色池，poolId === "beginner"
  */
-const POOL_FILTERS = [
+const POOL_FILTERS: { value: PoolFilter; labelKey: string }[] = [
   { value: 'all', labelKey: 'records.allPools' },
-  // 角色池
   { value: 'special', labelKey: 'records.specialPool' },
+  { value: 'weapon', labelKey: 'records.weaponPool' },
   { value: 'standard', labelKey: 'records.standardPool' },
   { value: 'beginner', labelKey: 'records.beginnerPool' },
-  // 武器池
-  { value: 'weponbox', labelKey: 'records.weaponSpecialPool' },
-  { value: 'weaponbox', labelKey: 'records.weaponStandardPool' },
 ];
 
 const RARITY_FILTERS = [
@@ -54,13 +46,46 @@ const RARITY_FILTERS = [
 
 const PAGE_SIZE = 20;
 
+/**
+ * 根据卡池筛选类型过滤记录
+ */
+function filterByPoolType(records: UnifiedGachaRecord[], poolFilter: PoolFilter): UnifiedGachaRecord[] {
+  switch (poolFilter) {
+    case 'all':
+      return records;
+    case 'special':
+      // 限定池：角色池，poolId 不是 standard 或 beginner
+      return records.filter(r => 
+        r.category === 'character' && 
+        r.poolId !== 'standard' && 
+        r.poolId !== 'beginner'
+      );
+    case 'weapon':
+      // 武器池：所有武器记录
+      return records.filter(r => r.category === 'weapon');
+    case 'standard':
+      // 常驻池：角色池，poolId === "standard"
+      return records.filter(r => 
+        r.category === 'character' && 
+        r.poolId === 'standard'
+      );
+    case 'beginner':
+      // 新手池：角色池，poolId === "beginner"
+      return records.filter(r => 
+        r.category === 'character' && 
+        r.poolId === 'beginner'
+      );
+    default:
+      return records;
+  }
+}
+
 export function RecordsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { activeUid, activeAccount } = useAccounts();
   
-  const [categoryFilter, setCategoryFilter] = useState<GachaCategory | 'all'>('all');
-  const [poolFilter, setPoolFilter] = useState('all');
+  const [poolFilter, setPoolFilter] = useState<PoolFilter>('all');
   const [rarityFilter, setRarityFilter] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -73,18 +98,8 @@ export function RecordsPage() {
   const filteredRecords = useMemo(() => {
     let records = allRecords;
 
-    // 类别筛选（角色/武器）
-    if (categoryFilter !== 'all') {
-      records = records.filter((r) => r.category === categoryFilter);
-    }
-
-    // 卡池筛选 - 根据 poolId 前缀匹配
-    if (poolFilter !== 'all') {
-      records = records.filter((r) => {
-        const poolPrefix = r.poolId?.toLowerCase().split('_')[0];
-        return poolPrefix === poolFilter;
-      });
-    }
+    // 卡池类型筛选
+    records = filterByPoolType(records, poolFilter);
 
     // 稀有度筛选
     if (rarityFilter > 0) {
@@ -101,7 +116,7 @@ export function RecordsPage() {
     }
 
     return records;
-  }, [allRecords, categoryFilter, poolFilter, rarityFilter, searchQuery]);
+  }, [allRecords, poolFilter, rarityFilter, searchQuery]);
 
   const paginatedRecords = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -146,32 +161,12 @@ export function RecordsPage() {
               />
             </div>
 
-            {/* 类别筛选（角色/武器） */}
-            <div className="relative">
-              <select
-                value={categoryFilter}
-                onChange={(e) => {
-                  setCategoryFilter(e.target.value as GachaCategory | 'all');
-                  setPoolFilter('all'); // 重置卡池筛选
-                  setPage(1);
-                }}
-                className="appearance-none bg-bg-2 border border-border rounded-lg px-4 py-2.5 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
-              >
-                {CATEGORY_FILTERS.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {t(f.labelKey)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-2 pointer-events-none" />
-            </div>
-
-            {/* 卡池筛选 */}
+            {/* 卡池类型筛选 */}
             <div className="relative">
               <select
                 value={poolFilter}
                 onChange={(e) => {
-                  setPoolFilter(e.target.value);
+                  setPoolFilter(e.target.value as PoolFilter);
                   setPage(1);
                 }}
                 className="appearance-none bg-bg-2 border border-border rounded-lg px-4 py-2.5 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
@@ -292,7 +287,7 @@ export function RecordsPage() {
 
 function RecordRow({ record }: { record: UnifiedGachaRecord }) {
   const rarityColors: Record<number, string> = {
-    6: 'text-orange-400',
+    6: 'text-red-400',
     5: 'text-yellow-400',
     4: 'text-purple-400',
     3: 'text-blue-400',

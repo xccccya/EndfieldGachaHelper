@@ -119,3 +119,36 @@ export function getTimestamp(input: string | number | undefined | null): number 
   const date = parseDate(input);
   return date ? date.getTime() : 0;
 }
+
+/**
+ * 格式化为相对时间（如：5分钟前、2小时前）
+ */
+export function formatDistanceToNow(input: string | number | undefined | null): string {
+  const date = parseDate(input);
+  if (!date) {
+    return '-';
+  }
+
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) {
+    return '刚刚';
+  }
+  if (diffMin < 60) {
+    return `${diffMin}分钟前`;
+  }
+  if (diffHour < 24) {
+    return `${diffHour}小时前`;
+  }
+  if (diffDay < 30) {
+    return `${diffDay}天前`;
+  }
+  
+  // 超过30天显示具体日期
+  return formatDateShort(date.getTime());
+}

@@ -6,13 +6,11 @@ import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { 
   BindingAccount, 
   EndFieldCharPoolType, 
-  EndFieldWeaponPoolType,
   GameAppInfo,
   GachaCategory,
 } from '@efgachahelper/shared';
 import { 
   END_FIELD_CHAR_POOL_TYPES,
-  END_FIELD_WEAPON_POOL_TYPES,
 } from '@efgachahelper/shared';
 import {
   grantAppToken,
@@ -156,27 +154,6 @@ function getCharPoolTypeFromPoolId(poolId: string): EndFieldCharPoolType | null 
   }
 }
 
-/**
- * 从武器 poolId 中提取卡池类型
- * poolId 格式如: weponbox_1_0_1, weaponbox_constant_2
- */
-function getWeaponPoolTypeFromPoolId(poolId: string): EndFieldWeaponPoolType | null {
-  const prefix = poolId.toLowerCase().split('_')[0];
-  // 目前武器池只有 Special 和 Standard 两种
-  // weponbox 通常对应限定武器池
-  // weaponbox_constant 对应常驻武器池
-  if (prefix === 'weponbox') {
-    return 'E_WeaponGachaPoolType_Special';
-  }
-  if (prefix === 'weaponbox') {
-    // weaponbox_constant 对应常驻
-    if (poolId.toLowerCase().includes('constant')) {
-      return 'E_WeaponGachaPoolType_Standard';
-    }
-    return 'E_WeaponGachaPoolType_Special';
-  }
-  return null;
-}
 
 /**
  * 构建已存在角色记录的 seqId 集合（按卡池类型分组）
@@ -197,29 +174,37 @@ function buildExistingCharSeqIdsByPool(uid: string): Partial<Record<EndFieldChar
 }
 
 /**
- * 构建已存在武器记录的 seqId 集合（按卡池类型分组）
+ * 构建已存在武器记录的 seqId 集合
+ * 武器池不区分类型，返回所有已存在的 seqId
  */
-function buildExistingWeaponSeqIdsByPool(uid: string): Partial<Record<EndFieldWeaponPoolType, Set<string>>> {
+function buildExistingWeaponSeqIds(uid: string): Set<string> {
   const records = getWeaponRecords(uid);
-  const result: Partial<Record<EndFieldWeaponPoolType, Set<string>>> = {};
+  const result = new Set<string>();
   
   for (const record of records) {
-    const poolType = getWeaponPoolTypeFromPoolId(record.poolId);
-    if (poolType) {
-      const set = (result[poolType] ??= new Set());
-      set.add(record.seqId);
-    }
+    result.add(record.seqId);
   }
   
   return result;
 }
 
-/** 总卡池数量 */
-const TOTAL_POOLS = END_FIELD_CHAR_POOL_TYPES.length + END_FIELD_WEAPON_POOL_TYPES.length;
+/** 
+ * 总卡池数量
+ * 角色池 3 种（限定池、常驻池、新手池）+ 武器池 1 种 = 4
+ */
+const TOTAL_POOLS = END_FIELD_CHAR_POOL_TYPES.length + 1; // 3 + 1 = 4
+
+/** 卡池类型显示名称映射 */
+const POOL_TYPE_NAMES: Record<string, string> = {
+  'E_CharacterGachaPoolType_Special': '限定池',
+  'E_CharacterGachaPoolType_Standard': '常驻池',
+  'E_CharacterGachaPoolType_Beginner': '新手池',
+  'E_WeaponGachaPoolType_All': '武器池',
+};
 
 /**
  * 抽卡记录同步 Hook
- * 支持角色池和武器池同步
+ * 同步四个卡池：限定池、常驻池、新手池、武器池
  * 支持增量同步：检测已存在的记录，避免重复拉取
  * 增加请求延迟防止触发 API 风控
  */
@@ -243,7 +228,7 @@ export function useGachaSync() {
 
       // 2. 构建已存在记录的 seqId 集合（用于增量同步）
       const existingCharSeqIdsByPool = buildExistingCharSeqIdsByPool(uid);
-      const existingWeaponSeqIdsByPool = buildExistingWeaponSeqIdsByPool(uid);
+      const existingWeaponSeqIds = buildExistingWeaponSeqIds(uid);
       
       // 3. 拉取所有卡池记录（角色 + 武器）
       setProgress({
@@ -266,16 +251,20 @@ export function useGachaSync() {
         categorySwitchDelayMs: 2000,
         // 增量同步
         existingCharSeqIdsByPool,
-        existingWeaponSeqIdsByPool,
+        existingWeaponSeqIdsByPool: {
+          'E_WeaponGachaPoolType_All': existingWeaponSeqIds,
+        },
         // 进度回调
         onProgress: (category, poolType, poolIndex, _totalPools, recordsFetched) => {
-          // 计算总进度
-          const baseIndex = category === 'weapon' ? END_FIELD_CHAR_POOL_TYPES.length : 0;
+          // 计算总进度：角色池 3 个 + 武器池 1 个
+          const currentPoolIndex = category === 'weapon' ? END_FIELD_CHAR_POOL_TYPES.length + 1 : poolIndex;
+          const poolName = POOL_TYPE_NAMES[poolType] || poolType;
+          
           setProgress({
             status: 'fetching_records',
             category,
-            poolType,
-            poolIndex: baseIndex + poolIndex,
+            poolType: poolName,
+            poolIndex: currentPoolIndex,
             totalPools: TOTAL_POOLS,
             charRecordsFetched: category === 'character' ? recordsFetched : charAdded,
             weaponRecordsFetched: category === 'weapon' ? recordsFetched : weaponAdded,
@@ -293,13 +282,11 @@ export function useGachaSync() {
         }
       }
 
-      // 5. 保存武器记录
-      for (const poolType of END_FIELD_WEAPON_POOL_TYPES) {
-        const records = allRecords.weapon[poolType];
-        if (records && records.length > 0) {
-          const added = addWeaponRecords(uid, records);
-          weaponAdded += added;
-        }
+      // 5. 保存武器记录（武器池只有一个类型）
+      const weaponRecords = allRecords.weapon['E_WeaponGachaPoolType_All'];
+      if (weaponRecords && weaponRecords.length > 0) {
+        const added = addWeaponRecords(uid, weaponRecords);
+        weaponAdded += added;
       }
 
       const totalAdded = charAdded + weaponAdded;

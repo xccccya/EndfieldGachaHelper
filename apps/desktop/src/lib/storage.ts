@@ -15,6 +15,7 @@ import {
   getDB,
   checkAndMigrateData,
   migrateFromLocalStorage,
+  cleanupLocalDuplicates,
   dbGetAccounts,
   dbGetGachaRecords,
   dbGetWeaponRecords,
@@ -146,6 +147,11 @@ export async function initStorage(): Promise<{
     await rehydrateLocalStorageFromSQLiteIfNeeded();
     // 启动兜底：把当前 localStorage 缓存补写到 SQLite（例如旧版本仅写 localStorage 的数据）
     await persistLocalCacheToSQLite();
+    // 清理本地重复记录
+    const cleanupResult = await cleanupLocalDuplicates();
+    if (cleanupResult.charDeleted > 0 || cleanupResult.weaponDeleted > 0) {
+      console.log(`[storage] 已清理本地重复记录: 角色 ${cleanupResult.charDeleted} 条, 武器 ${cleanupResult.weaponDeleted} 条`);
+    }
     return { migrated: false, accounts: 0, charRecords: 0, weaponRecords: 0 };
   } catch (e) {
     console.error('SQLite 初始化失败，降级到 localStorage:', e);

@@ -28,13 +28,16 @@ export function Card({ children, hover = false, className = '', ...props }: Card
 type CardHeaderProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   accent?: boolean;
+  /** 是否隐藏底部边框（用于只有 Header 没有 Content 的卡片） */
+  noBorder?: boolean;
 };
 
-export function CardHeader({ children, accent = false, className = '', ...props }: CardHeaderProps) {
+export function CardHeader({ children, accent = false, noBorder = false, className = '', ...props }: CardHeaderProps) {
   return (
     <div
       className={`
-        px-5 py-4 border-b border-border
+        px-5 py-4
+        ${noBorder ? '' : 'border-b border-border'}
         ${accent ? 'bg-bg-3 text-fg-0' : ''}
         ${className}
       `}

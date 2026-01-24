@@ -7,6 +7,8 @@ fn main() {
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_sql::Builder::default().build())
+    .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_process::init())
     .run(tauri::generate_context!())
     .expect("启动 Tauri 应用失败");
 }

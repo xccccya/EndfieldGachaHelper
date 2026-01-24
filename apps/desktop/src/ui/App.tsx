@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
-import { RecordsPage, SyncPage, StatsPage, AccountPage, SettingsPage } from './pages';
+import { RecordsPage, SyncPage, StatsPage, AccountPage, SettingsPage, CloudSyncPage } from './pages';
 
 export default function App() {
   return (
@@ -11,6 +11,7 @@ export default function App() {
           <Route path="/sync" element={<SyncPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/cloud-sync" element={<CloudSyncPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

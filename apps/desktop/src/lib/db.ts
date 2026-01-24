@@ -103,6 +103,71 @@ export async function closeDB(): Promise<void> {
   }
 }
 
+/**
+ * 清理本地数据库中的重复记录
+ * 按 seq_id 去重，保留最早创建的一条
+ */
+export async function cleanupLocalDuplicates(): Promise<{ charDeleted: number; weaponDeleted: number }> {
+  const database = await getDB();
+  let charDeleted = 0;
+  let weaponDeleted = 0;
+
+  try {
+    // 清理角色记录重复
+    // 找出所有重复的 seq_id
+    const charDuplicates = await database.select<{ seq_id: string; cnt: number }[]>(
+      `SELECT seq_id, COUNT(*) as cnt FROM gacha_records GROUP BY uid, seq_id HAVING cnt > 1`
+    );
+    
+    for (const dup of charDuplicates) {
+      // 获取该 seq_id 的所有记录，按 record_uid 排序（保留第一条）
+      const records = await database.select<{ record_uid: string }[]>(
+        `SELECT record_uid FROM gacha_records WHERE seq_id = $1 ORDER BY record_uid`,
+        [dup.seq_id]
+      );
+      
+      if (records.length > 1) {
+        // 删除除第一条外的所有记录
+        const toDelete = records.slice(1).map(r => r.record_uid);
+        for (const recordUid of toDelete) {
+          await database.execute(
+            `DELETE FROM gacha_records WHERE record_uid = $1`,
+            [recordUid]
+          );
+          charDeleted++;
+        }
+      }
+    }
+
+    // 清理武器记录重复
+    const weaponDuplicates = await database.select<{ seq_id: string; cnt: number }[]>(
+      `SELECT seq_id, COUNT(*) as cnt FROM weapon_records GROUP BY uid, seq_id HAVING cnt > 1`
+    );
+    
+    for (const dup of weaponDuplicates) {
+      const records = await database.select<{ record_uid: string }[]>(
+        `SELECT record_uid FROM weapon_records WHERE seq_id = $1 ORDER BY record_uid`,
+        [dup.seq_id]
+      );
+      
+      if (records.length > 1) {
+        const toDelete = records.slice(1).map(r => r.record_uid);
+        for (const recordUid of toDelete) {
+          await database.execute(
+            `DELETE FROM weapon_records WHERE record_uid = $1`,
+            [recordUid]
+          );
+          weaponDeleted++;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('清理本地重复记录失败:', e);
+  }
+
+  return { charDeleted, weaponDeleted };
+}
+
 // ============== 账号操作 ==============
 
 export type DBAccount = {
