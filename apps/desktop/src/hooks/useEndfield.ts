@@ -22,7 +22,10 @@ import { tauriFetcher } from '../lib/tauriHttp';
 import {
   saveToken,
   getToken,
-  addAccount,
+  addAccountsFromBinding,
+  makeAccountKey,
+  getAccounts,
+  getAccountHgUid,
   addGachaRecords,
   addWeaponRecords,
   setActiveUid,
@@ -90,15 +93,18 @@ export function useAuth() {
 
       // 4. 保存所有账号到本地
       for (const binding of endfield.bindingList) {
-        addAccount(binding);
+        addAccountsFromBinding(binding);
       }
 
       // 5. 设置默认选中的账号
       const activeUid = getActiveUid();
-      const hasActive = endfield.bindingList.some((b) => b.uid === activeUid);
-      const firstBinding = endfield.bindingList[0];
-      if (!hasActive && firstBinding) {
-        setActiveUid(firstBinding.uid);
+      const allRoleKeys = endfield.bindingList.flatMap((b) =>
+        (b.roles ?? []).map((r) => makeAccountKey(r.serverId, r.roleId)),
+      );
+      const hasActive = !!activeUid && allRoleKeys.includes(activeUid);
+      const firstKey = allRoleKeys[0];
+      if (!hasActive && firstKey) {
+        setActiveUid(firstKey);
       }
 
       return endfield.bindingList;
@@ -222,9 +228,16 @@ export function useGachaSync() {
     let weaponAdded = 0;
 
     try {
+      const account = getAccounts().find((a) => a.uid === uid) ?? null;
+      const hgUid = account ? getAccountHgUid(account) : null;
+      if (!hgUid) {
+        setProgress({ status: 'error', error: '该账号缺少 hgUid 信息，请重新绑定 Token 以补全账号' });
+        throw new Error('missing hgUid');
+      }
+
       // 1. 获取 u8_token
       setProgress({ status: 'authenticating' });
-      const u8Token = await fetchU8TokenByUid(uid, appToken, defaultOptions);
+      const u8Token = await fetchU8TokenByUid(hgUid, appToken, defaultOptions);
 
       // 2. 构建已存在记录的 seqId 集合（用于增量同步）
       const existingCharSeqIdsByPool = buildExistingCharSeqIdsByPool(uid);

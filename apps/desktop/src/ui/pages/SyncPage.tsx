@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge } from '../components';
 import { useGachaSync, useAccounts } from '../../hooks/useEndfield';
-import { getGachaRecords, getWeaponRecords } from '../../lib/storage';
+import { getGachaRecords, getWeaponRecords, parseAccountKey } from '../../lib/storage';
 import { formatDateShort } from '../../lib/dateUtils';
 
 /** 卡池类型名称映射 */
@@ -95,10 +95,11 @@ export function SyncPage() {
               </div>
               <div className="flex-1">
                 <div className="font-medium text-fg-0">
-                  {activeAccount.roles[0]?.nickName || `UID: ${activeAccount.roles[0]?.roleId || activeAccount.uid}`}
+                  {activeAccount.roles[0]?.nickName ||
+                    `UID: ${activeAccount.roles[0]?.roleId || parseAccountKey(activeAccount.uid)?.roleId || activeAccount.uid}`}
                 </div>
                 <div className="text-sm text-fg-1">
-                  {activeAccount.channelName} · UID: {activeAccount.roles[0]?.roleId || activeAccount.uid}
+                  {activeAccount.channelName} · UID: {activeAccount.roles[0]?.roleId || parseAccountKey(activeAccount.uid)?.roleId || activeAccount.uid}
                 </div>
               </div>
               <Badge variant="brand">{t('sync.currentAccount')}</Badge>

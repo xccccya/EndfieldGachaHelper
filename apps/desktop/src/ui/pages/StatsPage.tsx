@@ -269,7 +269,7 @@ function PoolGroupCard({ group }: { group: PoolGroupStats }) {
  * 固定池（常驻/新手）的展示组件
  */
 function FixedPoolCard({
-  poolName: _poolName,
+  poolName,
   records,
 }: {
   poolName: string;
@@ -292,6 +292,7 @@ function FixedPoolCard({
 
   return (
     <div className="space-y-2">
+      <div className="text-sm font-medium text-fg-0 px-1">{poolName}</div>
       {/* 概要信息 */}
       <div className="flex items-center gap-4 px-1 py-2">
         <span className="text-fg-1">

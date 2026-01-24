@@ -29,7 +29,11 @@ import { isTauri } from './tauriHttp';
 
 // API 基础 URL
 // 优先使用本地存储的自定义地址，其次使用环境变量，最后使用默认值
-const DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3011/api';
+function getEnvApiUrl(): string | null {
+  const v: unknown = import.meta.env?.VITE_API_URL;
+  return typeof v === 'string' && v.trim().length > 0 ? v : null;
+}
+const DEFAULT_API_URL = getEnvApiUrl() ?? 'http://localhost:3011/api';
 
 function getApiBaseUrl(): string {
   try {
@@ -119,13 +123,13 @@ async function request<T>(
     
     const response = await fetchFn(url, fetchOptions);
     
-    const data = await response.json();
+    const data: unknown = await response.json();
     
     if (!response.ok) {
-      const error = data as ApiError;
+      const error = (data && typeof data === 'object' ? (data as Partial<ApiError>) : null);
       throw new SyncApiError(
-        error.statusCode || response.status,
-        error.message || '请求失败',
+        error?.statusCode || response.status,
+        error?.message || '请求失败',
       );
     }
     
@@ -291,6 +295,9 @@ export const syncApi = {
     const queryParams = new URLSearchParams();
     queryParams.set('uid', params.uid);
     queryParams.set('region', params.region);
+    if (params.hgUid) {
+      queryParams.set('hgUid', params.hgUid);
+    }
     if (params.category) {
       queryParams.set('category', params.category);
     }

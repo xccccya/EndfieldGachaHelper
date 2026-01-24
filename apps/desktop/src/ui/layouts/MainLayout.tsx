@@ -27,6 +27,7 @@ import { useAccounts } from '../../hooks/useEndfield';
 import { useSyncConfig, useSyncHealth } from '../../hooks/useSync';
 import { TitleBar, ParticleBackground } from '../components';
 import { formatDistanceToNow } from '../../lib/dateUtils';
+import { parseAccountKey } from '../../lib/storage';
 
 type NavItem = {
   path: string;
@@ -130,7 +131,8 @@ export function MainLayout() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold truncate text-fg-0">
-                    {activeAccount.roles[0]?.nickName || `UID: ${activeAccount.roles[0]?.roleId || activeAccount.uid}`}
+                    {activeAccount.roles[0]?.nickName ||
+                      `UID: ${activeAccount.roles[0]?.roleId || parseAccountKey(activeAccount.uid)?.roleId || activeAccount.uid}`}
                   </div>
                   <div className="text-xs text-fg-1 truncate flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500" />

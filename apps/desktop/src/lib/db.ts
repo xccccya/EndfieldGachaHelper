@@ -240,6 +240,7 @@ export async function dbGetGachaRecords(uid?: string): Promise<DBGachaRecord[]> 
 
 /**
  * 批量保存角色抽卡记录
+ * @returns 实际新增的记录数量（不包括因主键冲突被忽略的记录）
  */
 export async function dbSaveGachaRecords(records: DBGachaRecord[]): Promise<number> {
   if (records.length === 0) return 0;
@@ -249,7 +250,7 @@ export async function dbSaveGachaRecords(records: DBGachaRecord[]): Promise<numb
   
   for (const record of records) {
     try {
-      await database.execute(
+      const result = await database.execute(
         `INSERT OR IGNORE INTO gacha_records 
          (record_uid, uid, pool_id, pool_name, char_id, char_name, rarity, is_new, is_free, gacha_ts, seq_id, fetched_at, category) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
@@ -259,9 +260,12 @@ export async function dbSaveGachaRecords(records: DBGachaRecord[]): Promise<numb
           record.is_free, record.gacha_ts, record.seq_id, record.fetched_at, record.category
         ]
       );
-      added++;
+      // INSERT OR IGNORE 成功插入时 rowsAffected 为 1，被忽略时为 0
+      if (result.rowsAffected > 0) {
+        added++;
+      }
     } catch {
-      // 忽略重复记录
+      // 其他数据库错误，忽略该条记录
     }
   }
   
@@ -312,6 +316,7 @@ export async function dbGetWeaponRecords(uid?: string): Promise<DBWeaponRecord[]
 
 /**
  * 批量保存武器抽卡记录
+ * @returns 实际新增的记录数量（不包括因主键冲突被忽略的记录）
  */
 export async function dbSaveWeaponRecords(records: DBWeaponRecord[]): Promise<number> {
   if (records.length === 0) return 0;
@@ -321,7 +326,7 @@ export async function dbSaveWeaponRecords(records: DBWeaponRecord[]): Promise<nu
   
   for (const record of records) {
     try {
-      await database.execute(
+      const result = await database.execute(
         `INSERT OR IGNORE INTO weapon_records 
          (record_uid, uid, pool_id, pool_name, weapon_id, weapon_name, weapon_type, rarity, is_new, gacha_ts, seq_id, fetched_at, category) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
@@ -331,9 +336,12 @@ export async function dbSaveWeaponRecords(records: DBWeaponRecord[]): Promise<nu
           record.is_new, record.gacha_ts, record.seq_id, record.fetched_at, record.category
         ]
       );
-      added++;
+      // INSERT OR IGNORE 成功插入时 rowsAffected 为 1，被忽略时为 0
+      if (result.rowsAffected > 0) {
+        added++;
+      }
     } catch {
-      // 忽略重复记录
+      // 其他数据库错误，忽略该条记录
     }
   }
   

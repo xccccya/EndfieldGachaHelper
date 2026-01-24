@@ -221,7 +221,12 @@ export function SyncAuthModal({ open, onOpenChange, initialMode = 'login' }: Syn
           className="transition-all duration-200 ease-out"
           style={{ opacity: 1, transform: 'translateX(0)' }}
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(e);
+            }}
+            className="space-y-4"
+          >
             {/* 邮箱 */}
             <Input
               type="email"
@@ -253,7 +258,9 @@ export function SyncAuthModal({ open, onOpenChange, initialMode = 'login' }: Syn
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={handleSendCode}
+                    onClick={() => {
+                      void handleSendCode();
+                    }}
                     disabled={!isEmailValid || sendingCode || countdown > 0}
                     className="shrink-0 min-w-[100px]"
                   >

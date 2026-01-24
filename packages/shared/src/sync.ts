@@ -131,6 +131,8 @@ export type GameAccountInfo = {
 export type CreateGameAccountRequest = {
   uid: string;
   region: string;
+  /** 可选：鹰角内部 uid（用于兼容旧云端账号键/绑定官方账号） */
+  hgUid?: string;
 };
 
 /** 游戏账号响应 */
@@ -147,6 +149,8 @@ export type GameAccountListResponse = {
 export type SyncUploadRequest = {
   uid: string;
   region: string;
+  /** 可选：鹰角内部 uid（用于兼容旧云端账号键/绑定官方账号） */
+  hgUid?: string;
   records: CloudGachaRecord[];
 };
 
@@ -161,6 +165,8 @@ export type SyncUploadResponse = {
 export type SyncDownloadParams = {
   uid: string;
   region: string;
+  /** 可选：鹰角内部 uid（用于兼容旧云端账号键） */
+  hgUid?: string;
   category?: GachaCategory;
   since?: string; // ISO date string，只获取此时间后的记录
 };

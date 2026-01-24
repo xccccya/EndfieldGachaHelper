@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Input, ConfirmDialog, Modal } from '../components';
 import { useAuth, useAccounts } from '../../hooks/useEndfield';
-import { removeAccount } from '../../lib/storage';
+import { removeAccount, parseAccountKey } from '../../lib/storage';
 
 // Token 获取相关 URL
 const HG_WEBSITE_URL = 'https://user.hypergryph.com/';
@@ -369,7 +369,8 @@ export function AccountPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5">
                       <span className="font-semibold text-lg truncate">
-                        {account.roles[0]?.nickName || `UID: ${account.uid}`}
+                        {account.roles[0]?.nickName ||
+                          `UID: ${account.roles[0]?.roleId || parseAccountKey(account.uid)?.roleId || account.uid}`}
                       </span>
                       {activeUid === account.uid && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/20 text-xs text-brand font-medium">
@@ -385,7 +386,7 @@ export function AccountPage() {
                       </span>
                       <span className="text-fg-2/60">•</span>
                       <span className="font-mono text-xs bg-fg-2/10 px-2 py-0.5 rounded">
-                        UID: {account.roles[0]?.roleId || account.uid}
+                        UID: {account.roles[0]?.roleId || parseAccountKey(account.uid)?.roleId || account.uid}
                       </span>
                       {account.roles[0]?.level && (
                         <>

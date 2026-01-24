@@ -8,17 +8,29 @@ import type { SyncConfig, SyncStatus, CloudGachaRecord } from '@efgachahelper/sh
 import { DEFAULT_SYNC_CONFIG } from '@efgachahelper/shared';
 import { syncApi, SyncApiError } from '../lib/syncApi';
 import {
-  dbGetAccounts,
   dbGetGachaRecords,
   dbGetWeaponRecords,
   dbSaveGachaRecords,
   dbSaveWeaponRecords,
+  dbSaveAccount,
   type DBGachaRecord,
   type DBWeaponRecord,
 } from '../lib/db';
+import {
+  getAccounts as getLocalAccounts,
+  saveAccounts as saveLocalAccounts,
+  type StoredAccount,
+  makeAccountKey,
+  parseAccountKey,
+  getAccountRoleId,
+  getAccountServerId,
+  getAccountHgUid,
+} from '../lib/storage';
 
 // 存储 key
 const SYNC_CONFIG_KEY = 'efgh_sync_config';
+// 当用户清空本地记录后，下一次对指定 uid 强制全量下载（一次性）
+const FORCE_FULL_DOWNLOAD_UIDS_KEY = 'efgh_sync_force_full_download_uids';
 
 // 自动同步间隔（毫秒）
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 分钟
@@ -37,6 +49,45 @@ const notifySyncChange = () => {
 export const notifyDataChange = () => {
   window.dispatchEvent(new CustomEvent(DATA_CHANGE_EVENT));
 };
+
+function getForceFullDownloadUids(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FORCE_FULL_DOWNLOAD_UIDS_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    const arr = Array.isArray(parsed) ? parsed : [];
+    const uids = arr.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+    return new Set(uids);
+  } catch {
+    return new Set();
+  }
+}
+
+function setForceFullDownloadUids(uids: Set<string>): void {
+  try {
+    localStorage.setItem(FORCE_FULL_DOWNLOAD_UIDS_KEY, JSON.stringify(Array.from(uids)));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * 标记某个 uid 下一次云端下载走“全量”模式（一次性）。
+ * 用于：用户清空本地记录后，避免增量下载 since 过滤导致 0/0。
+ */
+export function markForceFullDownload(uid: string): void {
+  if (!uid) return;
+  const uids = getForceFullDownloadUids();
+  uids.add(uid);
+  setForceFullDownloadUids(uids);
+}
+
+function clearForceFullDownload(uid: string): void {
+  if (!uid) return;
+  const uids = getForceFullDownloadUids();
+  if (!uids.has(uid)) return;
+  uids.delete(uid);
+  setForceFullDownloadUids(uids);
+}
 
 // ============== 数据转换函数 ==============
 
@@ -85,7 +136,8 @@ function dbWeaponRecordToCloud(record: DBWeaponRecord): CloudGachaRecord {
  */
 function cloudToDBGachaRecord(record: CloudGachaRecord, uid: string): DBGachaRecord {
   return {
-    record_uid: record.recordUid,
+    // 以本地 uid + seqId 生成稳定的 record_uid，避免云端旧 recordUid 格式导致重复
+    record_uid: `${uid}_char_${record.seqId}`,
     uid,
     pool_id: record.poolId,
     pool_name: record.poolName,
@@ -106,7 +158,7 @@ function cloudToDBGachaRecord(record: CloudGachaRecord, uid: string): DBGachaRec
  */
 function cloudToDBWeaponRecord(record: CloudGachaRecord, uid: string): DBWeaponRecord {
   return {
-    record_uid: record.recordUid,
+    record_uid: `${uid}_weapon_${record.seqId}`,
     uid,
     pool_id: record.poolId,
     pool_name: record.poolName,
@@ -120,6 +172,50 @@ function cloudToDBWeaponRecord(record: CloudGachaRecord, uid: string): DBWeaponR
     fetched_at: record.fetchedAt,
     category: 'weapon',
   };
+}
+
+/**
+ * 确保本地账号记录存在
+ * 用于云同步下载时，在保存抽卡记录前创建对应的账号记录
+ * 云端只存储 uid 和 region，所以创建最小化的账号记录
+ */
+async function ensureLocalAccountExists(uid: string, region: string): Promise<string> {
+  // 检查 localStorage 中是否已存在该账号
+  const existingAccounts = getLocalAccounts();
+  // 新版云同步：uid=roleId, region=serverId
+  // 旧版兼容：uid=hgUid, region='default'
+  const localUid =
+    region && region !== 'default' ? makeAccountKey(region, uid) : uid;
+  const accountExists = existingAccounts.some((a) => a.uid === localUid);
+  
+  if (accountExists) {
+    return localUid;
+  }
+  
+  // 创建最小化的账号记录
+  const newAccount: StoredAccount = {
+    uid: localUid,
+    channelName: region === 'default' ? '云同步恢复' : `云同步恢复 · ${region}`,
+    ...(region === 'default' ? { hgUid: uid } : {}),
+    ...(region === 'default' ? {} : { roleId: uid, serverId: region }),
+    roles: [], // 云端没有角色详情，需要用户重新通过 Token 获取
+    addedAt: Date.now(),
+  };
+  
+  // 保存到 localStorage（saveLocalAccounts 会同时触发 SQLite 写入）
+  const updatedAccounts = [...existingAccounts, newAccount];
+  saveLocalAccounts(updatedAccounts);
+  
+  // 确保 SQLite 也有记录（双重保险）
+  await dbSaveAccount({
+    uid: localUid,
+    channel_name: newAccount.channelName,
+    roles: JSON.stringify(newAccount.roles),
+    added_at: newAccount.addedAt,
+  });
+  
+  console.log(`[Sync] 已创建本地账号记录: ${localUid}`);
+  return localUid;
 }
 
 /**
@@ -390,14 +486,19 @@ export function useSyncAuth() {
     
     try {
       // 获取本地所有账号
-      const localAccounts = await dbGetAccounts();
+      const localAccounts = getLocalAccounts();
+      const forceFullDownloadUids = getForceFullDownloadUids();
       
       if (localAccounts.length === 0) {
         // 没有本地数据，只从云端下载
         const cloudStatus = await syncApi.getSyncStatus(config.accessToken);
         
         for (const cloudAccount of cloudStatus.accounts) {
-          // 从云端下载记录
+          // 1. 先创建本地账号记录（如果不存在）
+          // 云端只有 uid 和 region，需要创建最小化的账号记录
+          const localUid = await ensureLocalAccountExists(cloudAccount.uid, cloudAccount.region);
+          
+          // 2. 从云端下载记录
           const downloadResult = await syncApi.downloadRecords(
             config.accessToken,
             {
@@ -409,10 +510,10 @@ export function useSyncAuth() {
           // 分离角色和武器记录
           const characterRecords = downloadResult.records
             .filter((r) => r.category === 'character')
-            .map((r) => cloudToDBGachaRecord(r, cloudAccount.uid));
+            .map((r) => cloudToDBGachaRecord(r, localUid));
           const weaponRecords = downloadResult.records
             .filter((r) => r.category === 'weapon')
-            .map((r) => cloudToDBWeaponRecord(r, cloudAccount.uid));
+            .map((r) => cloudToDBWeaponRecord(r, localUid));
           
           // 保存到本地
           if (characterRecords.length > 0) {
@@ -428,13 +529,16 @@ export function useSyncAuth() {
         // 有本地数据，先上传后下载
         for (const account of localAccounts) {
           const uid = account.uid;
-          // 默认 region，如需可从账号信息中获取
-          const region = 'default';
+          const parsed = parseAccountKey(uid);
+          const cloudUid = getAccountRoleId(account) ?? parsed?.roleId ?? uid;
+          const region = getAccountServerId(account) ?? parsed?.serverId ?? 'default';
+          const hgUid = getAccountHgUid(account) ?? undefined;
           
           // 获取本地角色记录
           const localGachaRecords = await dbGetGachaRecords(uid);
           // 获取本地武器记录
           const localWeaponRecords = await dbGetWeaponRecords(uid);
+          const localRecordsEmpty = localGachaRecords.length === 0 && localWeaponRecords.length === 0;
           
           // 增量上传：只上传 fetched_at 大于上次同步时间的记录
           const lastSyncTimestamp = config.lastSyncAt 
@@ -469,8 +573,9 @@ export function useSyncAuth() {
             const uploadResult = await syncApi.uploadRecords(
               config.accessToken,
               {
-                uid,
+                uid: cloudUid,
                 region,
+                ...(hgUid ? { hgUid } : {}),
                 records: cloudRecords,
               },
             );
@@ -493,8 +598,14 @@ export function useSyncAuth() {
           }
           
           // 从云端下载（增量，只下载新记录）
-          const downloadParams: { uid: string; region: string; since?: string } = { uid, region };
-          if (config.lastSyncAt) downloadParams.since = config.lastSyncAt;
+          // 若本地记录为空（例如用户清空本地数据），或该 uid 被显式标记，则强制全量下载，避免 since 过滤导致 0/0
+          const shouldForceFullDownload = localRecordsEmpty || forceFullDownloadUids.has(uid);
+          const downloadParams: { uid: string; region: string; hgUid?: string; since?: string } = {
+            uid: cloudUid,
+            region,
+            ...(hgUid ? { hgUid } : {}),
+            ...(config.lastSyncAt && !shouldForceFullDownload ? { since: config.lastSyncAt } : {}),
+          };
           const downloadResult = await syncApi.downloadRecords(
             config.accessToken,
             downloadParams,
@@ -516,6 +627,11 @@ export function useSyncAuth() {
           if (downloadedWeaponRecords.length > 0) {
             const added = await dbSaveWeaponRecords(downloadedWeaponRecords);
             result.downloaded.weapons += added;
+          }
+
+          // 若本轮已完成该 uid 的全量下载，则清理一次性标记
+          if (forceFullDownloadUids.has(uid)) {
+            clearForceFullDownload(uid);
           }
         }
       }
@@ -607,10 +723,12 @@ export function useSyncHealth() {
   
   // 初始化时检查
   useEffect(() => {
-    checkHealth();
+    void checkHealth();
     
     // 每 30 秒检查一次
-    const interval = setInterval(checkHealth, 30000);
+    const interval = setInterval(() => {
+      void checkHealth();
+    }, 30000);
     return () => clearInterval(interval);
   }, [checkHealth]);
   
@@ -660,7 +778,7 @@ export function useAutoSync() {
       initialSyncDoneRef.current = true;
       // 延迟一点执行，等待其他初始化完成
       const timer = setTimeout(() => {
-        doAutoSync();
+        void doAutoSync();
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -673,7 +791,7 @@ export function useAutoSync() {
     }
 
     const interval = setInterval(() => {
-      doAutoSync();
+      void doAutoSync();
     }, AUTO_SYNC_INTERVAL);
 
     return () => clearInterval(interval);
@@ -696,7 +814,7 @@ export function useAutoSync() {
       // 延迟执行，避免频繁触发
       debounceTimer = setTimeout(() => {
         debounceTimer = null;
-        doAutoSync();
+        void doAutoSync();
       }, 3000);
     };
 
@@ -755,7 +873,7 @@ export function useCloudSyncStatus() {
 
   // 初始化时获取状态
   useEffect(() => {
-    fetchStatus();
+    void fetchStatus();
   }, [fetchStatus]);
 
   return {

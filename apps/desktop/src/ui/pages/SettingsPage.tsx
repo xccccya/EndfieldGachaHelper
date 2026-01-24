@@ -30,6 +30,7 @@ import {
 import { useUpdater } from '../../hooks/useUpdater';
 import { Card, CardHeader, CardContent, Button, Badge, ConfirmDialog, Popover, LegalModal } from '../components';
 import { useAccounts } from '../../hooks/useEndfield';
+import { markForceFullDownload } from '../../hooks/useSync';
 import {
   exportData,
   importData,
@@ -279,6 +280,8 @@ export function SettingsPage() {
           if (!activeUid) return;
           clearGachaRecords(activeUid);
           clearWeaponRecords(activeUid);
+          // 下一次云同步对该 uid 强制全量下载，避免 since 增量过滤导致下载为 0
+          markForceFullDownload(activeUid);
           setClearDialogOpen(false);
           setMessage({ type: 'success', text: t('settings.clearSuccess') });
         }}

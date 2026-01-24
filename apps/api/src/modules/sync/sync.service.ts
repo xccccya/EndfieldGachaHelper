@@ -40,7 +40,38 @@ export class SyncService {
     });
 
     if (existing) {
+      // 补写 hgUid（仅当提供且云端未记录）
+      if (data.hgUid && !existing.hgUid) {
+        return await this.prisma.gameAccount.update({
+          where: { id: existing.id },
+          data: { hgUid: data.hgUid },
+        });
+      }
       return existing;
+    }
+
+    // 兼容旧云端账号键：
+    // 旧版客户端：uid=hgUid, region='default'
+    // 新版客户端：uid=roleId, region=serverId，并可携带 hgUid
+    if (data.hgUid) {
+      const legacy = await this.prisma.gameAccount.findFirst({
+        where: {
+          userId,
+          uid: data.hgUid,
+          region: 'default',
+        },
+      });
+      if (legacy) {
+        // 若存在旧账号，直接把它“升级”为新键（保留关联的 gachaRecords）
+        return await this.prisma.gameAccount.update({
+          where: { id: legacy.id },
+          data: {
+            uid: data.uid,
+            region: data.region,
+            hgUid: legacy.hgUid ?? data.hgUid,
+          },
+        });
+      }
     }
 
     return this.prisma.gameAccount.create({
@@ -48,6 +79,7 @@ export class SyncService {
         userId,
         uid: data.uid,
         region: data.region,
+        hgUid: data.hgUid ?? null,
       },
     });
   }
@@ -87,12 +119,14 @@ export class SyncService {
     userId: string,
     uid: string,
     region: string,
+    hgUid: string | undefined,
     records: CloudGachaRecordDto[],
   ) {
     // 获取或创建游戏账号
     const gameAccount = await this.getOrCreateGameAccount(userId, {
       uid,
       region,
+      ...(hgUid ? { hgUid } : {}),
     });
 
     let uploaded = 0;
@@ -157,11 +191,12 @@ export class SyncService {
     userId: string,
     uid: string,
     region: string,
+    hgUid?: string,
     category?: GachaCategory,
     since?: string,
   ) {
     // 查找游戏账号
-    const gameAccount = await this.prisma.gameAccount.findUnique({
+    let gameAccount = await this.prisma.gameAccount.findUnique({
       where: {
         userId_uid_region: {
           userId,
@@ -170,6 +205,27 @@ export class SyncService {
         },
       },
     });
+
+    // 兼容：若找不到新键账号，且提供了 hgUid，则尝试旧键并升级
+    if (!gameAccount && hgUid) {
+      const legacy = await this.prisma.gameAccount.findFirst({
+        where: {
+          userId,
+          uid: hgUid,
+          region: 'default',
+        },
+      });
+      if (legacy) {
+        gameAccount = await this.prisma.gameAccount.update({
+          where: { id: legacy.id },
+          data: {
+            uid,
+            region,
+            hgUid: legacy.hgUid ?? hgUid,
+          },
+        });
+      }
+    }
 
     if (!gameAccount) {
       return {

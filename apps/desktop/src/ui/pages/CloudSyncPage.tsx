@@ -64,7 +64,7 @@ export function CloudSyncPage() {
       setSyncResult(result);
       // 同步成功后刷新云端状态
       if (result.success) {
-        refreshCloudStatus();
+        void refreshCloudStatus();
       }
     } finally {
       setSyncing(false);
@@ -79,7 +79,7 @@ export function CloudSyncPage() {
       const result = await cleanupDuplicates();
       setCleanResult(result);
       // 清理后刷新云端状态
-      refreshCloudStatus();
+      void refreshCloudStatus();
     } finally {
       setCleaning(false);
     }

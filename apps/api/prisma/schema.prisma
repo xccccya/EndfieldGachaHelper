@@ -34,8 +34,15 @@ model RefreshToken {
 model GameAccount {
   id        String   @id @default(cuid())
   userId    String
+  /**
+   * 云同步账号键：
+   * - 新版：uid=roleId（玩家可见 UID），region=serverId（区服）
+   * - 旧版（兼容）：uid=hgUid（鹰角内部 uid），region='default'
+   */
   uid       String
   region    String
+  /** 鹰角内部 uid（用于官方接口换取 u8_token），可为空以兼容云端恢复/旧数据 */
+  hgUid     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -44,6 +51,7 @@ model GameAccount {
 
   @@unique([userId, uid, region])
   @@index([userId])
+  @@index([userId, hgUid])
 }
 
 model GachaRecord {

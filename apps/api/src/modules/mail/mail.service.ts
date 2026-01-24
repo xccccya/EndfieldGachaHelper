@@ -107,7 +107,9 @@ export class MailService {
       this.logger.log(`验证码邮件已发送至 ${to}`);
       return true;
     } catch (error) {
-      this.logger.error(`发送邮件失败: ${error}`);
+      const msg =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`发送邮件失败: ${msg}`);
       return false;
     }
   }

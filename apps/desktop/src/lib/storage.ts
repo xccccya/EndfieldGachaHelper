@@ -138,6 +138,8 @@ export async function initStorage(): Promise<{
       const result = await migrateFromLocalStorage();
       // 如果历史版本已清空 localStorage（或 localStorage 为空），从 SQLite 回填一次，保证 UI 可读
       await rehydrateLocalStorageFromSQLiteIfNeeded();
+      // 本地结构迁移：账号主键切换到 roleKey（serverId:roleId）
+      await migrateLocalDataToRoleKeyIfNeeded();
       // 迁移/回填之后，确保 SQLite 至少包含当前 localStorage 缓存的全集（数据完整性兜底）
       await persistLocalCacheToSQLite();
       return { migrated: true, ...result };
@@ -145,6 +147,8 @@ export async function initStorage(): Promise<{
     
     // 正常启动时也做一次兜底：localStorage 为空但 SQLite 有数据 -> 回填
     await rehydrateLocalStorageFromSQLiteIfNeeded();
+    // 本地结构迁移：账号主键切换到 roleKey（serverId:roleId）
+    await migrateLocalDataToRoleKeyIfNeeded();
     // 启动兜底：把当前 localStorage 缓存补写到 SQLite（例如旧版本仅写 localStorage 的数据）
     await persistLocalCacheToSQLite();
     // 清理本地重复记录
@@ -168,6 +172,179 @@ const STORAGE_KEYS = {
   GACHA_RECORDS: 'efgh.gachaRecords',
   WEAPON_RECORDS: 'efgh.weaponRecords',
 } as const;
+
+// ============== 本地数据结构迁移（roleKey 作为账号主键） ==============
+const LOCAL_DATA_SCHEMA_VERSION_KEY = 'efgh.local_data_schema_version';
+const LOCAL_DATA_SCHEMA_VERSION = 2;
+
+function getLocalDataSchemaVersion(): number {
+  try {
+    const raw = localStorage.getItem(LOCAL_DATA_SCHEMA_VERSION_KEY);
+    const v = raw ? parseInt(raw, 10) : 1;
+    return Number.isFinite(v) && v > 0 ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function setLocalDataSchemaVersion(v: number): void {
+  try {
+    localStorage.setItem(LOCAL_DATA_SCHEMA_VERSION_KEY, String(v));
+  } catch {
+    // ignore
+  }
+}
+
+async function migrateLocalDataToRoleKeyIfNeeded(): Promise<void> {
+  // 无 window/localStorage 的环境直接跳过
+  if (typeof window === 'undefined') return;
+
+  const current = getLocalDataSchemaVersion();
+  if (current >= LOCAL_DATA_SCHEMA_VERSION) return;
+
+  // 1) 迁移 accounts / activeUid（localStorage）
+  const rawAccounts = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+  let accounts: StoredAccount[] = [];
+  try {
+    const parsed: unknown = rawAccounts ? JSON.parse(rawAccounts) : [];
+    accounts = Array.isArray(parsed) ? (parsed as StoredAccount[]) : [];
+  } catch {
+    accounts = [];
+  }
+
+  // uidMap: oldHgUid -> newAccountKey
+  const uidMap = new Map<string, string>();
+  const migratedAccounts: StoredAccount[] = [];
+
+  for (const a of accounts) {
+    // 已是新格式（或至少已经有 hgUid / accountKey），直接保留
+    if (a?.hgUid || (typeof a?.uid === 'string' && a.uid.includes(':'))) {
+      migratedAccounts.push(a);
+      continue;
+    }
+
+    const role = a?.roles?.[0];
+    if (!role?.roleId || !role?.serverId || typeof a?.uid !== 'string' || !a.uid) {
+      migratedAccounts.push(a);
+      continue;
+    }
+
+    const oldHgUid = a.uid;
+    const newUid = makeAccountKey(role.serverId, role.roleId);
+    uidMap.set(oldHgUid, newUid);
+
+    migratedAccounts.push({
+      ...a,
+      uid: newUid,
+      hgUid: oldHgUid,
+      roleId: role.roleId,
+      serverId: role.serverId,
+    });
+  }
+
+  if (uidMap.size === 0) {
+    setLocalDataSchemaVersion(LOCAL_DATA_SCHEMA_VERSION);
+    return;
+  }
+
+  // 去重：同 uid 仅保留一条（优先 roles 非空、addedAt 更早）
+  const dedup = new Map<string, StoredAccount>();
+  for (const a of migratedAccounts) {
+    if (!a?.uid) continue;
+    const existing = dedup.get(a.uid);
+    if (!existing) {
+      dedup.set(a.uid, a);
+      continue;
+    }
+    const score = (x: StoredAccount) => {
+      const rolesScore = (x.roles?.length ?? 0) > 0 ? 1 : 0;
+      // addedAt 越早越优先
+      return rolesScore * 1_000_000_000_000 - (x.addedAt ?? Date.now());
+    };
+    if (score(a) > score(existing)) dedup.set(a.uid, a);
+  }
+
+  const finalAccounts = Array.from(dedup.values());
+
+  // activeUid 迁移
+  const activeUid = localStorage.getItem(STORAGE_KEYS.ACTIVE_UID);
+  if (activeUid && uidMap.has(activeUid)) {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_UID, uidMap.get(activeUid)!);
+  }
+
+  localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(finalAccounts));
+
+  // 2) 迁移 records（localStorage）
+  const migrateRecords = <T extends { uid: string; recordUid: string }>(
+    key: string,
+    categoryPrefix: 'char' | 'weapon',
+  ) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    let arr: T[] = [];
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      arr = Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      arr = [];
+    }
+
+    const out = arr.map((r) => {
+      const newUid = uidMap.get(r.uid);
+      if (!newUid) return r;
+      const oldUid = r.uid;
+      const oldPrefix = `${oldUid}_${categoryPrefix}_`;
+      const newPrefix = `${newUid}_${categoryPrefix}_`;
+      const recordUid =
+        typeof r.recordUid === 'string' && r.recordUid.startsWith(oldPrefix)
+          ? `${newPrefix}${r.recordUid.slice(oldPrefix.length)}`
+          : r.recordUid;
+      return { ...r, uid: newUid, recordUid } as T;
+    });
+
+    localStorage.setItem(key, JSON.stringify(out));
+  };
+
+  migrateRecords(STORAGE_KEYS.GACHA_RECORDS, 'char');
+  migrateRecords(STORAGE_KEYS.WEAPON_RECORDS, 'weapon');
+
+  // 3) 迁移 SQLite（避免下次回填把旧键/旧 recordUid 带回来）
+  // 注意：不依赖 sqliteEnabled；若 DB 不可用会被上层捕获并降级
+  const database = await getDB();
+  for (const [oldHgUid, newUid] of uidMap) {
+    // accounts：复制到新键后删除旧键
+    const acc = finalAccounts.find((a) => a.hgUid === oldHgUid || a.uid === newUid);
+    if (acc) {
+      await database.execute(
+        `INSERT OR REPLACE INTO accounts (uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4)`,
+        [newUid, acc.channelName, JSON.stringify(acc.roles ?? []), acc.addedAt],
+      );
+    }
+    await database.execute(`DELETE FROM accounts WHERE uid = $1`, [oldHgUid]);
+
+    // gacha_records / weapon_records：更新 uid + record_uid 前缀
+    await database.execute(
+      `UPDATE gacha_records 
+       SET uid = $1, record_uid = REPLACE(record_uid, $2, $3)
+       WHERE uid = $4`,
+      [newUid, `${oldHgUid}_char_`, `${newUid}_char_`, oldHgUid],
+    );
+    await database.execute(
+      `UPDATE weapon_records 
+       SET uid = $1, record_uid = REPLACE(record_uid, $2, $3)
+       WHERE uid = $4`,
+      [newUid, `${oldHgUid}_weapon_`, `${newUid}_weapon_`, oldHgUid],
+    );
+  }
+
+  setLocalDataSchemaVersion(LOCAL_DATA_SCHEMA_VERSION);
+  notifyStorageChange({ reason: 'migrateLocalDataToRoleKey', keys: [
+    STORAGE_KEYS.ACCOUNTS,
+    STORAGE_KEYS.ACTIVE_UID,
+    STORAGE_KEYS.GACHA_RECORDS,
+    STORAGE_KEYS.WEAPON_RECORDS,
+  ]});
+}
 
 async function rehydrateLocalStorageFromSQLiteIfNeeded(): Promise<void> {
   // 没有 window/localStorage 的环境直接跳过
@@ -278,11 +455,60 @@ export function notifyStorageChange(detail?: Omit<StorageChangeDetail, 'at'>): v
 
 // ============== 类型定义 ==============
 export type StoredAccount = {
+  /**
+   * 本地账号主键（新版）：
+   * 使用 accountKey = `${serverId}:${roleId}`，确保多服/多角色不冲突，且不受 hgUid 变动影响。
+   */
   uid: string;
+  /** 鹰角内部 uid：用于官方接口换取 u8_token（云端恢复时可能为空，需要重新绑定补全） */
+  hgUid?: string;
+  /** 玩家可见 UID（即 roleId）。云端恢复/展示时优先使用。 */
+  roleId?: string;
+  /** 区服 ID（即 serverId）。云端恢复/展示/云同步时优先使用。 */
+  serverId?: string;
   channelName: string;
   roles: GameRole[];
   addedAt: number;
 };
+
+export function makeAccountKey(serverId: string, roleId: string): string {
+  return `${serverId}:${roleId}`;
+}
+
+export function parseAccountKey(accountKey: string): { serverId: string; roleId: string } | null {
+  if (!accountKey) return null;
+  const idx = accountKey.indexOf(':');
+  if (idx <= 0 || idx === accountKey.length - 1) return null;
+  const serverId = accountKey.slice(0, idx).trim();
+  const roleId = accountKey.slice(idx + 1).trim();
+  if (!serverId || !roleId) return null;
+  return { serverId, roleId };
+}
+
+export function getAccountRoleId(account: StoredAccount): string | null {
+  return (
+    account.roleId ??
+    account.roles[0]?.roleId ??
+    parseAccountKey(account.uid)?.roleId ??
+    null
+  );
+}
+
+export function getAccountServerId(account: StoredAccount): string | null {
+  return (
+    account.serverId ??
+    account.roles[0]?.serverId ??
+    parseAccountKey(account.uid)?.serverId ??
+    null
+  );
+}
+
+export function getAccountHgUid(account: StoredAccount): string | null {
+  // 新版优先使用显式字段；旧版历史数据中 uid 可能就是 hgUid
+  if (account.hgUid) return account.hgUid;
+  if (account.roles[0]?.roleId && account.roles[0]?.serverId) return account.uid || null;
+  return null;
+}
 
 /** 角色抽卡记录 */
 export type GachaRecord = EndFieldCharInfo & {
@@ -375,37 +601,78 @@ export function saveAccounts(accounts: StoredAccount[]): void {
   });
 }
 
-export function addAccount(binding: BindingAccount): StoredAccount {
+/**
+ * 从绑定信息写入本地账号：
+ * - 旧版：一个 binding 对应一个账号（uid=hgUid）
+ * - 新版：一个 binding 的每个 role 对应一个账号（uid=serverId:roleId）
+ */
+export function addAccountsFromBinding(binding: BindingAccount): StoredAccount[] {
   const accounts = getAccounts();
-  const existing = accounts.find((a) => a.uid === binding.uid);
-  
-  const account: StoredAccount = {
-    uid: binding.uid,
-    channelName: binding.channelName,
-    roles: binding.roles,
-    addedAt: existing?.addedAt ?? Date.now(),
-  };
+  const now = Date.now();
 
-  if (existing) {
-    // 更新已存在的账号
-    const idx = accounts.indexOf(existing);
-    accounts[idx] = account;
-  } else {
-    accounts.push(account);
+  const roles = Array.isArray(binding.roles) ? binding.roles : [];
+  const upserted: StoredAccount[] = [];
+
+  // 若 roles 为空（极少见/异常），保底仍存一条“旧风格”账号
+  if (roles.length === 0) {
+    const existing = accounts.find((a) => a.uid === binding.uid);
+    const account: StoredAccount = {
+      uid: binding.uid,
+      hgUid: binding.uid,
+      channelName: binding.channelName,
+      roles: [],
+      addedAt: existing?.addedAt ?? now,
+    };
+    if (existing) {
+      accounts[accounts.indexOf(existing)] = account;
+    } else {
+      accounts.push(account);
+    }
+    saveAccounts(accounts);
+    upserted.push(account);
+    return upserted;
+  }
+
+  for (const role of roles) {
+    const accountKey = makeAccountKey(role.serverId, role.roleId);
+    const existing = accounts.find((a) => a.uid === accountKey);
+
+    const channelName = role.serverName
+      ? `${binding.channelName} · ${role.serverName}`
+      : binding.channelName;
+
+    const account: StoredAccount = {
+      uid: accountKey,
+      hgUid: binding.uid,
+      roleId: role.roleId,
+      serverId: role.serverId,
+      channelName,
+      roles: [role],
+      addedAt: existing?.addedAt ?? now,
+    };
+
+    if (existing) {
+      accounts[accounts.indexOf(existing)] = account;
+    } else {
+      accounts.push(account);
+    }
+    upserted.push(account);
   }
 
   saveAccounts(accounts);
 
   enqueueSQLiteWrite(async () => {
-    await dbSaveAccount({
-      uid: account.uid,
-      channel_name: account.channelName,
-      roles: JSON.stringify(account.roles ?? []),
-      added_at: account.addedAt,
-    });
+    for (const a of upserted) {
+      await dbSaveAccount({
+        uid: a.uid,
+        channel_name: a.channelName,
+        roles: JSON.stringify(a.roles ?? []),
+        added_at: a.addedAt,
+      });
+    }
   });
 
-  return account;
+  return upserted;
 }
 
 export function removeAccount(uid: string): void {

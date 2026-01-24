@@ -74,6 +74,7 @@ export class SyncController {
       req.user.id,
       dto.uid,
       dto.region,
+      dto.hgUid,
       dto.records,
     );
   }
@@ -90,6 +91,7 @@ export class SyncController {
       req.user.id,
       query.uid,
       query.region,
+      query.hgUid,
       query.category,
       query.since,
     );
