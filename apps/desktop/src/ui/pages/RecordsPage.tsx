@@ -13,11 +13,12 @@ import {
   AlertCircle,
   User,
   Sword,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, RarityBadge, Input } from '../components';
-import { useAccounts } from '../../hooks/useEndfield';
-import { getAllUnifiedRecords, type UnifiedGachaRecord } from '../../lib/storage';
-import { formatDate } from '../../lib/dateUtils';
+import { useAccounts, useGachaRecordsData } from '../../hooks/useEndfield';
+import { charRecordToUnified, weaponRecordToUnified, type UnifiedGachaRecord } from '../../lib/storage';
+import { formatDate, getTimestamp } from '../../lib/dateUtils';
 
 /** 卡池类型筛选 */
 type PoolFilter = 'all' | 'special' | 'weapon' | 'standard' | 'beginner';
@@ -83,17 +84,29 @@ function filterByPoolType(records: UnifiedGachaRecord[], poolFilter: PoolFilter)
 export function RecordsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeUid, activeAccount } = useAccounts();
+  const { activeUid, activeAccount, loading: accountsLoading } = useAccounts();
+  const { gachaRecords, weaponRecords, loading: recordsLoading } = useGachaRecordsData(activeUid);
   
   const [poolFilter, setPoolFilter] = useState<PoolFilter>('all');
   const [rarityFilter, setRarityFilter] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
 
+  // 将记录转换为统一格式并排序
   const allRecords = useMemo(() => {
-    if (!activeUid) return [];
-    return getAllUnifiedRecords(activeUid);
-  }, [activeUid]);
+    const charUnified = gachaRecords.map(charRecordToUnified);
+    const weaponUnified = weaponRecords.map(weaponRecordToUnified);
+    const all = [...charUnified, ...weaponUnified];
+    
+    // 按时间排序（最新的在前）
+    all.sort((a, b) => {
+      const timeA = getTimestamp(a.gachaTs);
+      const timeB = getTimestamp(b.gachaTs);
+      return timeB - timeA;
+    });
+    
+    return all;
+  }, [gachaRecords, weaponRecords]);
 
   const filteredRecords = useMemo(() => {
     let records = allRecords;
@@ -124,6 +137,20 @@ export function RecordsPage() {
   }, [filteredRecords, page]);
 
   const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE);
+
+  // 加载状态
+  if (accountsLoading || recordsLoading) {
+    return (
+      <Card>
+        <CardContent>
+          <div className="text-center py-12">
+            <Loader2 size={48} className="mx-auto mb-4 text-brand animate-spin" />
+            <h3 className="text-lg font-semibold mb-2">{t('common.loading')}</h3>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!activeAccount) {
     return (
@@ -169,7 +196,7 @@ export function RecordsPage() {
                   setPoolFilter(e.target.value as PoolFilter);
                   setPage(1);
                 }}
-                className="appearance-none bg-bg-2 border border-border rounded-lg px-4 py-2.5 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
+                className="appearance-none bg-bg-2 border border-border rounded-md px-4 py-2.5 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
               >
                 {POOL_FILTERS.map((f) => (
                   <option key={f.value} value={f.value}>
@@ -188,7 +215,7 @@ export function RecordsPage() {
                   setRarityFilter(Number(e.target.value));
                   setPage(1);
                 }}
-                className="appearance-none bg-bg-2 border border-border rounded-lg px-4 py-2.5 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
+                className="appearance-none bg-bg-2 border border-border rounded-md px-4 py-2.5 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
               >
                 {RARITY_FILTERS.map((f) => (
                   <option key={f.value} value={f.value}>

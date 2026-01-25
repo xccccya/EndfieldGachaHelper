@@ -15,6 +15,7 @@ const resources = {
         account: '账号管理',
         cloudSync: '云同步',
         settings: '设置',
+        about: '关于',
       },
       header: {
         kicker: '明日方舟：终末地',
@@ -25,12 +26,45 @@ const resources = {
         language: '语言',
         toggleTheme: '切换主题',
         toggleLanguage: '切换语言',
+        collapseSidebar: '折叠侧边栏',
+        expandSidebar: '展开侧边栏',
       },
       titlebar: {
         minimize: '最小化',
         maximize: '最大化',
         restore: '还原',
         close: '关闭',
+      },
+      // 关闭确认弹窗
+      closeConfirm: {
+        title: '关闭窗口',
+        description: '请选择关闭窗口后的行为',
+        minimize: '最小化到托盘',
+        minimizeDesc: '后台运行',
+        exit: '退出程序',
+        exitDesc: '完全关闭',
+        remember: '记住我的选择',
+        resetInSettings: '可在设置中重置',
+      },
+      // 窗口行为设置
+      windowBehavior: {
+        title: '窗口行为',
+        desc: '设置关闭窗口时的默认行为',
+        closeBehavior: '关闭窗口时',
+        closeBehaviorDesc: '选择点击关闭按钮时的默认行为',
+        askEveryTime: '每次询问',
+        minimizeToTray: '最小化到托盘',
+        exitApp: '退出程序',
+        reset: '重置为每次询问',
+        resetSuccess: '已重置为每次询问',
+      },
+      // 托盘菜单
+      tray: {
+        showWindow: '显示主界面',
+        toggleSync: '切换同步状态',
+        syncEnabled: '同步已启用',
+        syncDisabled: '同步已关闭',
+        quit: '退出程序',
       },
       common: {
         dismiss: '关闭',
@@ -242,6 +276,13 @@ const resources = {
         rarityDistDesc: '各稀有度获取占比',
         units: '个',
       },
+      // 关于页面
+      about: {
+        versionUpdate: '版本更新',
+        versionUpdateDesc: '检查并安装最新版本',
+        legal: '法律声明',
+        legalDesc: '免责声明与用户协议',
+      },
       // 设置页面
       settings: {
         language: '语言设置',
@@ -320,6 +361,7 @@ const resources = {
         account: 'Account',
         cloudSync: 'Cloud Sync',
         settings: 'Settings',
+        about: 'About',
       },
       header: {
         kicker: 'Arknights: Endfield',
@@ -330,12 +372,45 @@ const resources = {
         language: 'Language',
         toggleTheme: 'Toggle theme',
         toggleLanguage: 'Toggle language',
+        collapseSidebar: 'Collapse sidebar',
+        expandSidebar: 'Expand sidebar',
       },
       titlebar: {
         minimize: 'Minimize',
         maximize: 'Maximize',
         restore: 'Restore',
         close: 'Close',
+      },
+      // Close confirm modal
+      closeConfirm: {
+        title: 'Close Window',
+        description: 'Choose what happens when closing the window',
+        minimize: 'Minimize to Tray',
+        minimizeDesc: 'Run in background',
+        exit: 'Exit Application',
+        exitDesc: 'Close completely',
+        remember: 'Remember my choice',
+        resetInSettings: 'Can reset in Settings',
+      },
+      // Window behavior settings
+      windowBehavior: {
+        title: 'Window Behavior',
+        desc: 'Configure default behavior when closing the window',
+        closeBehavior: 'When closing window',
+        closeBehaviorDesc: 'Choose default action when clicking close button',
+        askEveryTime: 'Ask every time',
+        minimizeToTray: 'Minimize to tray',
+        exitApp: 'Exit application',
+        reset: 'Reset to ask every time',
+        resetSuccess: 'Reset to ask every time',
+      },
+      // Tray menu
+      tray: {
+        showWindow: 'Show Window',
+        toggleSync: 'Toggle Sync',
+        syncEnabled: 'Sync Enabled',
+        syncDisabled: 'Sync Disabled',
+        quit: 'Quit',
       },
       common: {
         dismiss: 'Dismiss',
@@ -546,6 +621,13 @@ const resources = {
         rarityDist: 'Rarity Distribution',
         rarityDistDesc: 'Pull ratio by rarity',
         units: '',
+      },
+      // About page
+      about: {
+        versionUpdate: 'Version Update',
+        versionUpdateDesc: 'Check and install the latest version',
+        legal: 'Legal',
+        legalDesc: 'Disclaimer and terms of service',
       },
       // Settings page
       settings: {

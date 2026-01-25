@@ -1,0 +1,16 @@
+{
+  "identifier": "tray-menu",
+  "description": "托盘菜单窗口权限",
+  "windows": ["tray-menu"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:event:default",
+    "core:event:allow-emit",
+    "core:event:allow-listen"
+  ]
+}

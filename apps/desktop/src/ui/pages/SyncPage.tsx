@@ -3,7 +3,7 @@
  * 拉取抽卡记录（角色 + 武器）
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,8 +18,8 @@ import {
   Sword,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge } from '../components';
-import { useGachaSync, useAccounts } from '../../hooks/useEndfield';
-import { getGachaRecords, getWeaponRecords, parseAccountKey } from '../../lib/storage';
+import { useGachaSync, useAccounts, useGachaRecordsData } from '../../hooks/useEndfield';
+import { parseAccountKey } from '../../lib/storage';
 import { formatDateShort } from '../../lib/dateUtils';
 
 /** 卡池类型名称映射 */
@@ -44,16 +44,11 @@ export function SyncPage() {
   const navigate = useNavigate();
   const { progress, syncRecords, reset } = useGachaSync();
   const { activeUid, activeAccount } = useAccounts();
+  const { gachaRecords, weaponRecords, loading: recordsLoading } = useGachaRecordsData(activeUid);
 
-  // 获取现有记录
-  const existingCharRecords = useMemo(() => 
-    activeUid ? getGachaRecords(activeUid) : [], 
-  [activeUid]);
-  
-  const existingWeaponRecords = useMemo(() => 
-    activeUid ? getWeaponRecords(activeUid) : [], 
-  [activeUid]);
-  
+  // 使用从 hook 获取的记录
+  const existingCharRecords = gachaRecords;
+  const existingWeaponRecords = weaponRecords;
   const totalRecords = existingCharRecords.length + existingWeaponRecords.length;
 
   const handleSync = useCallback(async () => {
@@ -89,7 +84,7 @@ export function SyncPage() {
         <CardContent>
           {/* 当前账号 */}
           {activeAccount ? (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-bg-2 mb-4">
+            <div className="flex items-center gap-3 p-4 rounded-md bg-bg-2 mb-4">
               <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center text-brand font-bold">
                 {activeAccount.roles[0]?.nickName?.charAt(0) || 'U'}
               </div>
@@ -105,7 +100,7 @@ export function SyncPage() {
               <Badge variant="brand">{t('sync.currentAccount')}</Badge>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-4">
+            <div className="flex items-center gap-3 p-4 rounded-md bg-yellow-500/10 border border-yellow-500/30 mb-4">
               <AlertCircle size={20} className="text-yellow-400" />
               <div className="flex-1">
                 <div className="font-medium text-yellow-400">{t('sync.noAccount')}</div>
@@ -124,7 +119,7 @@ export function SyncPage() {
 
           {/* 同步进度 */}
           {isLoading && (
-            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 mb-4">
+            <div className="p-4 rounded-md bg-blue-500/10 border border-blue-500/30 mb-4">
               <div className="flex items-center gap-3 mb-3">
                 <Loader2 size={20} className="text-blue-400 animate-spin" />
                 <span className="font-medium text-blue-400">
@@ -171,7 +166,7 @@ export function SyncPage() {
                 </div>
               )}
               {/* 进度条 */}
-              <div className="mt-3 h-2 bg-bg-3 rounded-full overflow-hidden">
+              <div className="mt-3 h-2 bg-bg-3 rounded-sm overflow-hidden">
                 <div
                   className="h-full bg-blue-500 transition-all duration-300"
                   style={{
@@ -186,7 +181,7 @@ export function SyncPage() {
 
           {/* 完成状态 */}
           {progress.status === 'done' && (
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30 mb-4">
+            <div className="p-4 rounded-md bg-green-500/10 border border-green-500/30 mb-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 size={20} className="text-green-400" />
                 <div className="flex-1">
@@ -214,7 +209,7 @@ export function SyncPage() {
 
           {/* 错误状态 */}
           {progress.status === 'error' && (
-            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 mb-4">
+            <div className="p-4 rounded-md bg-red-500/10 border border-red-500/30 mb-4">
               <div className="flex items-center gap-3">
                 <AlertCircle size={20} className="text-red-400" />
                 <div className="flex-1">
@@ -258,47 +253,53 @@ export function SyncPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* 总记录数 */}
-            <div className="p-4 rounded-lg bg-bg-2 text-center">
-              <div className="text-3xl font-bold text-brand">{totalRecords}</div>
-              <div className="text-sm text-fg-1 mt-1">{t('sync.totalRecords')}</div>
+          {recordsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={24} className="text-brand animate-spin" />
             </div>
-            {/* 角色记录数 */}
-            <div className="p-4 rounded-lg bg-bg-2 text-center">
-              <div className="text-2xl font-bold text-blue-400 flex items-center justify-center gap-1">
-                <User size={20} />
-                {existingCharRecords.length}
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* 总记录数 */}
+              <div className="p-4 rounded-md bg-bg-2 text-center">
+                <div className="text-3xl font-bold text-brand">{totalRecords}</div>
+                <div className="text-sm text-fg-1 mt-1">{t('sync.totalRecords')}</div>
               </div>
-              <div className="text-sm text-fg-1 mt-1">{t('sync.charRecords')}</div>
-            </div>
-            {/* 武器记录数 */}
-            <div className="p-4 rounded-lg bg-bg-2 text-center">
-              <div className="text-2xl font-bold text-orange-400 flex items-center justify-center gap-1">
-                <Sword size={20} />
-                {existingWeaponRecords.length}
+              {/* 角色记录数 */}
+              <div className="p-4 rounded-md bg-bg-2 text-center">
+                <div className="text-2xl font-bold text-blue-400 flex items-center justify-center gap-1">
+                  <User size={20} />
+                  {existingCharRecords.length}
+                </div>
+                <div className="text-sm text-fg-1 mt-1">{t('sync.charRecords')}</div>
               </div>
-              <div className="text-sm text-fg-1 mt-1">{t('sync.weaponRecords')}</div>
-            </div>
-            {/* 最后同步时间 */}
-            <div className="p-4 rounded-lg bg-bg-2 text-center">
-              <div className="text-xl font-bold text-fg-0">
-                {totalRecords > 0 
-                  ? formatDateShort(
-                      Math.max(
-                        existingCharRecords[0]?.fetchedAt || 0,
-                        existingWeaponRecords[0]?.fetchedAt || 0
+              {/* 武器记录数 */}
+              <div className="p-4 rounded-md bg-bg-2 text-center">
+                <div className="text-2xl font-bold text-orange-400 flex items-center justify-center gap-1">
+                  <Sword size={20} />
+                  {existingWeaponRecords.length}
+                </div>
+                <div className="text-sm text-fg-1 mt-1">{t('sync.weaponRecords')}</div>
+              </div>
+              {/* 最后同步时间 */}
+              <div className="p-4 rounded-md bg-bg-2 text-center">
+                <div className="text-xl font-bold text-fg-0">
+                  {totalRecords > 0 
+                    ? formatDateShort(
+                        Math.max(
+                          existingCharRecords[0]?.fetchedAt || 0,
+                          existingWeaponRecords[0]?.fetchedAt || 0
+                        )
                       )
-                    )
-                  : '-'
-                }
-              </div>
-              <div className="text-sm text-fg-1 mt-1 flex items-center justify-center gap-1">
-                <Clock size={14} />
-                {t('sync.lastSync')}
+                    : '-'
+                  }
+                </div>
+                <div className="text-sm text-fg-1 mt-1 flex items-center justify-center gap-1">
+                  <Clock size={14} />
+                  {t('sync.lastSync')}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

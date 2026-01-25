@@ -1,15 +1,264 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::Serialize;
+use tauri::{
+    image::Image,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+};
+
+/// 托盘菜单位置数据
+#[derive(Clone, Serialize)]
+struct TrayMenuPosition {
+    x: i32,
+    y: i32,
+}
+
+/// 显示主窗口
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        // 确保窗口可见
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+/// 显示托盘菜单窗口
+fn show_tray_menu(app: &AppHandle, x: i32, y: i32) {
+    // 菜单窗口尺寸
+    // 适当缩小整体体积，并确保内容不触发滚动条
+    const MENU_WIDTH: f64 = 236.0;
+    const MENU_HEIGHT: f64 = 244.0;
+    const MARGIN: f64 = 8.0;
+
+    // 如果已存在菜单窗口，先关闭它
+    if let Some(menu_window) = app.get_webview_window("tray-menu") {
+        let _ = menu_window.close();
+    }
+
+    // 获取点击位置所在的显示器信息
+    let mut screen_width: f64 = 1920.0;
+    let mut screen_height: f64 = 1080.0;
+    let mut screen_x: f64 = 0.0;
+    let mut screen_y: f64 = 0.0;
+    
+    if let Ok(monitors) = app.available_monitors() {
+        for monitor in monitors {
+            let pos = monitor.position();
+            let size = monitor.size();
+            let mon_x = pos.x as f64;
+            let mon_y = pos.y as f64;
+            let mon_w = size.width as f64;
+            let mon_h = size.height as f64;
+            
+            // 检查点击位置是否在此显示器范围内
+            if (x as f64) >= mon_x && (x as f64) < mon_x + mon_w 
+                && (y as f64) >= mon_y && (y as f64) < mon_y + mon_h {
+                screen_width = mon_w;
+                screen_height = mon_h;
+                screen_x = mon_x;
+                screen_y = mon_y;
+                break;
+            }
+        }
+    }
+
+    // 计算菜单位置（默认在托盘图标上方居中）
+    let mut menu_x = (x as f64) - MENU_WIDTH / 2.0;
+    let mut menu_y = (y as f64) - MENU_HEIGHT - MARGIN;
+
+    // 确保菜单不超出屏幕右边界
+    if menu_x + MENU_WIDTH > screen_x + screen_width - MARGIN {
+        menu_x = screen_x + screen_width - MENU_WIDTH - MARGIN;
+    }
+    // 确保菜单不超出屏幕左边界
+    if menu_x < screen_x + MARGIN {
+        menu_x = screen_x + MARGIN;
+    }
+    // 如果上方空间不足，显示在托盘图标下方
+    if menu_y < screen_y + MARGIN {
+        menu_y = (y as f64) + MARGIN;
+    }
+    // 确保菜单不超出屏幕下边界
+    if menu_y + MENU_HEIGHT > screen_y + screen_height - MARGIN {
+        menu_y = screen_y + screen_height - MENU_HEIGHT - MARGIN;
+    }
+
+    // 创建菜单窗口
+    let menu_window = WebviewWindowBuilder::new(
+        app,
+        "tray-menu",
+        WebviewUrl::App("/tray-menu".into()),
+    )
+    .title("托盘菜单")
+    .inner_size(MENU_WIDTH, MENU_HEIGHT)
+    .position(menu_x, menu_y)
+    .decorations(false)
+    .resizable(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .transparent(true)
+    .shadow(false) // 禁用阴影以支持透明
+    .visible(true) // 直接显示
+    .focused(true)
+    .build();
+
+    match menu_window {
+        Ok(window) => {
+            let _ = window.emit("tray-menu-position", TrayMenuPosition { x, y });
+            let _ = window.set_focus();
+        }
+        Err(_) => {}
+    }
+}
+
+/// 隐藏托盘菜单窗口
+fn hide_tray_menu(app: &AppHandle) {
+    if let Some(menu_window) = app.get_webview_window("tray-menu") {
+        let _ = menu_window.close();
+    }
+}
+
+/// Tauri 命令：关闭托盘菜单
+#[tauri::command]
+fn close_tray_menu(app: AppHandle) {
+    hide_tray_menu(&app);
+}
+
+/// Tauri 命令：显示主窗口
+#[tauri::command]
+fn show_main_window_cmd(app: AppHandle) {
+    show_main_window(&app);
+}
+
+/// Tauri 命令：让主窗口跳转到指定路由（用于托盘菜单等子窗口）
+#[tauri::command]
+fn navigate_main(app: AppHandle, path: String) {
+    // 确保主窗口可见并聚焦
+    show_main_window(&app);
+    if let Some(window) = app.get_webview_window("main") {
+        // 发送导航事件到主窗口（前端在 MainLayout 中监听）
+        let _ = window.emit("efgh:navigate", serde_json::json!({ "path": path, "replace": true }));
+    }
+}
+
+/// Tauri 命令：退出应用
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    // 发送退出事件到主窗口
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit("tray-quit", ());
+    }
+    // 关闭托盘菜单
+    hide_tray_menu(&app);
+    // 延迟退出
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::process::exit(0);
+    });
+}
+
+/// Tauri 命令：切换同步状态
+#[tauri::command]
+fn toggle_sync(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit("tray-toggle-sync", ());
+    }
+}
+
+/// Tauri 命令：设置自动同步开关（避免“反向 toggle”导致状态不同步）
+#[tauri::command]
+fn set_auto_sync(app: AppHandle, enabled: bool) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit(
+            "tray-set-auto-sync",
+            serde_json::json!({ "enabled": enabled }),
+        );
+    }
+}
+
 fn main() {
-  tauri::Builder::default()
-    .plugin(tauri_plugin_http::init())
-    .plugin(tauri_plugin_fs::init())
-    .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_sql::Builder::default().build())
-    .plugin(tauri_plugin_updater::Builder::new().build())
-    .plugin(tauri_plugin_process::init())
-    .run(tauri::generate_context!())
-    .expect("启动 Tauri 应用失败");
+    tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_sql::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .invoke_handler(tauri::generate_handler![
+            close_tray_menu,
+            show_main_window_cmd,
+            navigate_main,
+            quit_app,
+            toggle_sync,
+            set_auto_sync
+        ])
+        .setup(|app| {
+            // 加载托盘图标
+            let icon = Image::from_path("icons/icon.png")
+                .or_else(|_| Image::from_path("icons/32x32.png"))
+                .unwrap_or_else(|_| {
+                    // 如果找不到图标文件，使用默认图标
+                    app.default_window_icon().cloned().unwrap()
+                });
+
+            // 创建托盘图标（不使用原生菜单）
+            let _tray = TrayIconBuilder::new()
+                .icon(icon)
+                .tooltip("终末地抽卡助手")
+                .menu_on_left_click(false)
+                .on_tray_icon_event(|tray, event| {
+                    match event {
+                        TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } => {
+                            hide_tray_menu(tray.app_handle());
+                            show_main_window(tray.app_handle());
+                        }
+                        TrayIconEvent::Click {
+                            button: MouseButton::Right,
+                            button_state: MouseButtonState::Up,
+                            position,
+                            ..
+                        } => {
+                            show_tray_menu(
+                                tray.app_handle(),
+                                position.x as i32,
+                                position.y as i32,
+                            );
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    let label = window.label();
+                    if label == "main" {
+                        // 主窗口：阻止默认关闭行为
+                        api.prevent_close();
+                        let _ = window.emit("window-close-requested", ());
+                    }
+                    // 托盘菜单窗口：允许正常关闭
+                }
+                WindowEvent::Focused(focused) => {
+                    // 托盘菜单窗口失去焦点时自动关闭
+                    if !focused && window.label() == "tray-menu" {
+                        let _ = window.close();
+                    }
+                }
+                _ => {}
+            }
+        })
+        .run(tauri::generate_context!())
+        .expect("启动 Tauri 应用失败");
 }
 

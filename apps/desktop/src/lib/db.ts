@@ -357,8 +357,10 @@ export async function dbClearWeaponRecords(uid: string): Promise<void> {
 }
 
 // ============== 数据迁移（从 localStorage 到 SQLite） ==============
+// 注意：以下迁移函数已废弃，请使用 lib/storage/migration.ts 中的统一迁移逻辑
 
 /**
+ * @deprecated 使用 lib/storage/migration.ts 中的 needsMigration() 代替
  * 检查是否需要迁移数据
  */
 export async function checkAndMigrateData(): Promise<boolean> {
@@ -385,6 +387,7 @@ export async function checkAndMigrateData(): Promise<boolean> {
 }
 
 /**
+ * @deprecated 使用 lib/storage/migration.ts 中的 migrateFromLocalStorage() 代替
  * 从 localStorage 迁移数据到 SQLite
  */
 export async function migrateFromLocalStorage(): Promise<{

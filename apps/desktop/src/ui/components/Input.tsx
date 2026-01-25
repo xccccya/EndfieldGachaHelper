@@ -1,6 +1,8 @@
 /**
  * 输入框组件
- * 基于 Design.md 设计规范
+ * 基于设计系统圆角规范（Design Tokens）
+ * 
+ * 圆角: rounded-md (8px) - 与按钮保持一致
  */
 
 import type { InputHTMLAttributes, ReactNode } from 'react';
@@ -31,7 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             className={`
-              w-full rounded-lg border bg-bg-2 px-4 py-2.5
+              w-full rounded-md border bg-bg-2 px-4 py-2.5
               text-fg-0 placeholder:text-fg-2/60
               transition-all duration-200
               focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand

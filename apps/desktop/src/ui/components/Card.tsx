@@ -1,6 +1,11 @@
 /**
  * 卡片组件
- * 基于 Design.md 设计规范
+ * 基于设计系统圆角规范（Design Tokens）
+ * 
+ * 圆角层级：
+ * - Card 容器: rounded-lg (12px)
+ * - CardHeader/Footer: 继承父级圆角（first/last-child）
+ * - 内部元素: rounded-md (8px)
  */
 
 import type { HTMLAttributes, ReactNode } from 'react';
@@ -14,8 +19,9 @@ export function Card({ children, hover = false, className = '', ...props }: Card
   return (
     <div
       className={`
-        relative rounded-2xl border border-border bg-bg-1 shadow-lg
-        ${hover ? 'transition-transform duration-200 hover:scale-[1.02] hover:shadow-xl' : ''}
+        relative rounded-lg border border-border bg-bg-1 shadow-md
+        overflow-hidden
+        ${hover ? 'transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg' : ''}
         ${className}
       `}
       {...props}

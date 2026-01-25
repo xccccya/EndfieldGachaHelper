@@ -2,6 +2,17 @@
 
 :root {
   color-scheme: light;
+  
+  /* ========================================
+     圆角设计系统（Design Tokens）
+     ======================================== */
+  --radius-xs: 4px;   /* 极小元素：徽章、标签 */
+  --radius-sm: 6px;   /* 小元素：小按钮、进度条 */
+  --radius-md: 8px;   /* 中等元素：按钮、输入框、内部块 */
+  --radius-lg: 12px;  /* 大元素：卡片、面板、弹窗 */
+  --radius-xl: 16px;  /* 超大元素：主容器（备用） */
+  --radius-full: 9999px; /* 圆形：头像、圆形按钮 */
+  
   /* 品牌色 */
   --brand: #fffa00;
   --brand-hover: #efe701;
@@ -29,7 +40,7 @@ html[data-theme='dark'] {
   color-scheme: dark;
 
   /* 深色模式背景
-     目标：不要“纯黑压死”，而是通过分层/对比提升可读性 */
+     目标：不要"纯黑压死"，而是通过分层/对比提升可读性 */
   --bg-0: #15171c; /* App 背景 */
   --bg-1: #1c2027; /* 面板/卡片 */
   --bg-2: #242a35; /* 次级面板/输入 */
@@ -45,7 +56,7 @@ html[data-theme='dark'] {
   
   /* 特殊装饰色 */
   --accent-dark: #0f1217;
-  /* 暗色背景下斜纹需要“降噪”，否则会吞掉文字对比 */
+  /* 暗色背景下斜纹需要"降噪"，否则会吞掉文字对比 */
   --stripe-color: rgba(255, 250, 0, 0.06);
   
   /* 深色模式特有 - 卡片悬浮阴影 */
@@ -130,58 +141,6 @@ body {
   background-attachment: fixed;
 }
 
-/* 全局滚动条（WebView2/Chromium）——强制覆盖所有可滚动容器 */
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-*::-webkit-scrollbar {
-  width: 4px !important;
-  height: 4px !important;
-}
-
-html::-webkit-scrollbar-track,
-body::-webkit-scrollbar-track,
-*::-webkit-scrollbar-track {
-  background: transparent !important;
-  border-radius: 999px;
-}
-
-html::-webkit-scrollbar-thumb,
-body::-webkit-scrollbar-thumb,
-*::-webkit-scrollbar-thumb {
-  /* 兜底：即使 color-mix 不支持也有颜色 */
-  background-color: var(--fg-2);
-  background-color: color-mix(in srgb, var(--fg-2) 72%, transparent);
-  border-radius: 999px;
-  border: 1px solid transparent; /* 形成“内边距”，视觉更细 */
-  background-clip: padding-box;
-}
-
-html::-webkit-scrollbar-thumb:hover,
-body::-webkit-scrollbar-thumb:hover,
-*::-webkit-scrollbar-thumb:hover {
-  background-color: var(--fg-1);
-  background-color: color-mix(in srgb, var(--fg-1) 78%, transparent);
-}
-
-html::-webkit-scrollbar-thumb:active,
-body::-webkit-scrollbar-thumb:active,
-*::-webkit-scrollbar-thumb:active {
-  background-color: var(--fg-0);
-  background-color: color-mix(in srgb, var(--fg-0) 60%, transparent);
-}
-
-html::-webkit-scrollbar-corner,
-body::-webkit-scrollbar-corner,
-*::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* 非 WebKit（如 Firefox）也尽量跟随主题（不影响 WebView2） */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--fg-2) transparent;
-  scrollbar-color: color-mix(in srgb, var(--fg-2) 70%, transparent) transparent;
-}
 
 /* 选中文本颜色 */
 ::selection {
@@ -241,6 +200,77 @@ html[data-theme='dark'] select option {
   }
 }
 
+/* 页面切换动效（随机三选一） */
+@keyframes ef-page-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ef-page-fade-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes ef-page-fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ef-page-fade-scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes ef-page-fade-blur-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes ef-page-fade-blur-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+    filter: blur(6px);
+  }
+}
+
 @keyframes pulse-brand {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(255, 250, 0, 0.4);
@@ -278,6 +308,248 @@ html[data-theme='dark'] select option {
   animation: industrial-flicker 0.6s ease-out;
 }
 
+/* 页面切换容器：不引入第三方库，兼容 Router 的“退场→入场” */
+.ef-page-transition {
+  min-height: 0; /* 允许作为 flex 子项正确滚动 */
+  will-change: transform, opacity, filter;
+}
+
+.ef-page-transition--exit,
+.ef-page-transition--enter {
+  pointer-events: none; /* 动画中避免误触 */
+}
+
+.ef-page-transition--enter.ef-page-transition--fade-slide {
+  animation: ef-page-fade-slide-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ef-page-transition--exit.ef-page-transition--fade-slide {
+  animation: ef-page-fade-slide-out 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.ef-page-transition--enter.ef-page-transition--fade-scale {
+  animation: ef-page-fade-scale-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ef-page-transition--exit.ef-page-transition--fade-scale {
+  animation: ef-page-fade-scale-out 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.ef-page-transition--enter.ef-page-transition--fade-blur {
+  animation: ef-page-fade-blur-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ef-page-transition--exit.ef-page-transition--fade-blur {
+  animation: ef-page-fade-blur-out 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-page-transition--exit,
+  .ef-page-transition--enter {
+    animation: none !important;
+  }
+}
+
+/* StatsPage 标签页动效：指示条滑动 + 内容淡入位移 */
+.ef-tab-panel {
+  will-change: transform, opacity;
+}
+
+.ef-tab-panel--from-right {
+  animation: ef-tab-panel-in-right 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ef-tab-panel--from-left {
+  animation: ef-tab-panel-in-left 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes ef-tab-panel-in-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ef-tab-panel-in-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-tab-panel--from-right,
+  .ef-tab-panel--from-left {
+    animation: none !important;
+  }
+}
+
+/* StatsPage 折叠展开：使用 grid-rows 过渡避免测量高度 */
+.ef-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ef-collapse[data-expanded='true'] {
+  grid-template-rows: 1fr;
+}
+
+.ef-collapse__inner {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-collapse {
+    transition: none !important;
+  }
+}
+
+/* 进度条加载动画：从 0 → 目标值 */
+.ef-progress-fill {
+  transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-progress-fill {
+    transition: none !important;
+  }
+}
+
+/* 主题切换按钮：纯图标 + 点击动效（光环扩散） */
+.ef-theme-toggle {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  outline: none;
+  /* 浅色模式：更明显的底色与层次（不加边框） */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(0, 0, 0, 0.04) 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset;
+}
+
+html[data-theme='dark'] .ef-theme-toggle {
+  /* 深色模式：独立皮肤，不复用浅色参数 */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.14) 100%);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.ef-theme-toggle:hover {
+  filter: brightness(1.03);
+}
+
+.ef-theme-toggle:active {
+  filter: brightness(0.98);
+}
+
+.ef-theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 250, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ef-theme-toggle--animating {
+  animation: ef-theme-toggle-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ef-theme-toggle--animating::after {
+  animation: ef-theme-toggle-ring 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes ef-theme-toggle-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ef-theme-toggle-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    border-color: rgba(255, 250, 0, 0);
+    box-shadow: 0 0 0 rgba(255, 250, 0, 0);
+  }
+  35% {
+    opacity: 1;
+    border-color: rgba(255, 250, 0, 0.55);
+    box-shadow: 0 0 18px rgba(255, 250, 0, 0.18);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+    border-color: rgba(255, 250, 0, 0);
+    box-shadow: 0 0 0 rgba(255, 250, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-theme-toggle--animating,
+  .ef-theme-toggle--animating::after {
+    animation: none !important;
+  }
+}
+
+/* StatsPage 三段式筛选按钮：强化选中态（浅色/深色自适应） */
+.ef-seg-filter {
+  /* 浅色模式专属皮肤 */
+  background: rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='dark'] .ef-seg-filter {
+  /* 深色模式专属皮肤（不复用浅色参数） */
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+.ef-seg-filter__indicator {
+  /* 浅色模式专属选中底座 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 0, 0.18) 0%,
+    rgba(255, 250, 0, 0.10) 100%
+  );
+  border: 1px solid rgba(255, 250, 0, 0.40);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+html[data-theme='dark'] .ef-seg-filter__indicator {
+  /* 深色模式专属选中底座（不复用浅色参数） */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 0, 0.20) 0%,
+    rgba(255, 250, 0, 0.12) 100%
+  );
+  border: 1px solid rgba(255, 250, 0, 0.52);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.60),
+    0 0 18px rgba(255, 250, 0, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* StatsPage 概览数字块：无边框卡片块（只做背景层次） */
+.ef-stat-tile {
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.70) inset,
+    0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='dark'] .ef-stat-tile {
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
 /* 工业风装饰条 */
 .industrial-stripe {
   position: relative;
@@ -305,11 +577,11 @@ html[data-theme='dark'] select option {
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
 }
 
 html[data-theme='dark'] .card-hover:hover {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* 深色模式卡片增强 */
@@ -458,3 +730,431 @@ html:not([data-theme='dark']) .titlebar {
   background: linear-gradient(90deg, var(--brand) 0%, transparent 100%);
 }
 
+/* ============================================
+   托盘菜单窗口样式
+   ============================================ */
+
+/* 托盘菜单容器 - 透明背景 */
+.tray-menu-root {
+  background: transparent !important;
+  min-height: 100%;
+  width: 100%;
+}
+
+/* 托盘菜单窗口（独立 webview）：
+   - 避免 body 默认背景露出导致“白色边框”
+   - 禁止整体滚动条（高度由窗口控制）
+*/
+html.tray-menu-window,
+html.tray-menu-window body {
+  background: transparent !important;
+}
+
+html.tray-menu-window body {
+  overflow: hidden !important;
+}
+
+html.tray-menu-window #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 托盘菜单窗口内彻底隐藏滚动条（即使个别容器误触发 overflow） */
+html.tray-menu-window ::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html.tray-menu-window * {
+  scrollbar-width: none;
+}
+
+/* 托盘菜单窗口入场动画 */
+@keyframes tray-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tray-menu-animate {
+  animation: tray-menu-enter 0.15s ease-out;
+}
+
+/* ============================================
+   全局滚动条样式（WebView2/Chromium）
+   放在文件最末尾确保最高优先级
+   ============================================ */
+
+/* 滚动条整体尺寸 - 细滚动条 */
+::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* 滚动条轨道 - 透明 */
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* 滚动条滑块 */
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.5) !important;
+  border-radius: 2px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 136, 136, 0.7) !important;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(136, 136, 136, 0.9) !important;
+}
+
+/* 隐藏滚动条上下箭头按钮 */
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 滚动条角落 */
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* 深色模式滚动条 */
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(154, 166, 195, 0.4) !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(154, 166, 195, 0.6) !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:active {
+  background: rgba(154, 166, 195, 0.8) !important;
+}
+
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(136, 136, 136, 0.5) transparent;
+}
+
+html[data-theme='dark'] * {
+  scrollbar-color: rgba(154, 166, 195, 0.4) transparent;
+}
+
+/* ============================================
+   侧边栏折叠/展开（仅按钮）+ 平滑动效
+   ============================================ */
+
+.ef-sidebar {
+  width: 18rem; /* 72 */
+  will-change: width;
+  transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] {
+  width: 5rem; /* 80 */
+}
+
+.ef-sidebar-top {
+  padding: 12px;
+}
+
+.ef-sidebar-toggle {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-2);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 6px 14px rgba(0, 0, 0, 0.08);
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar-toggle:hover {
+  background: var(--bg-3);
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.08),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+.ef-sidebar-toggle:active {
+  transform: translateY(0) scale(0.945);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 6px 12px rgba(0, 0, 0, 0.10);
+}
+
+/* 浅色模式：更柔和、不突兀的配色 */
+html:not([data-theme='dark']) .ef-sidebar-toggle {
+  background: rgba(25, 25, 25, 0.04);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.06);
+}
+
+html:not([data-theme='dark']) .ef-sidebar-toggle:hover {
+  background: rgba(255, 250, 0, 0.10);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.08);
+}
+
+html:not([data-theme='dark']) .ef-sidebar-toggle:active {
+  background: rgba(25, 25, 25, 0.06);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 8px 14px rgba(0, 0, 0, 0.07);
+}
+
+html[data-theme='dark'] .ef-sidebar-toggle {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme='dark'] .ef-sidebar-toggle:hover {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 16px 36px rgba(0, 0, 0, 0.65);
+}
+
+.ef-sidebar-toggle:focus-visible {
+  outline: none;
+  /* 无“外层边框”，用发光环提升可见性 */
+  box-shadow:
+    0 0 0 3px rgba(255, 250, 0, 0.22),
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* 导航项：用 grid 让文字“真正收起”，避免 flex 预留空间导致僵硬 */
+.ef-sidebar-nav-item {
+  display: grid;
+  grid-template-columns: 24px 1fr 16px;
+  column-gap: 12px;
+  align-items: center;
+  overflow: hidden;
+  transition: grid-template-columns 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    column-gap 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item {
+  grid-template-columns: 40px 0fr 0px;
+  column-gap: 0;
+  justify-content: center;
+}
+
+.ef-sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* 折叠态：图标拥有与折叠按钮一致的“可点击”底与反馈 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html:not([data-theme='dark']) .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:hover .ef-sidebar-icon {
+  background: rgba(25, 25, 25, 0.04);
+  /* 仅使用 inset，高亮不溢出容器，避免被裁切 */
+  box-shadow: inset 0 0 0 1px rgba(25, 25, 25, 0.06);
+  transform: translateY(-1px);
+}
+
+html:not([data-theme='dark']) .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:active .ef-sidebar-icon {
+  transform: translateY(0) scale(0.945);
+  box-shadow: inset 0 0 0 1px rgba(25, 25, 25, 0.08);
+}
+
+html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:hover .ef-sidebar-icon {
+  /* 与折叠按钮一致：用 bg-3 做层次，品牌黄做内描边 */
+  background: var(--bg-3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:active .ef-sidebar-icon {
+  transform: translateY(0) scale(0.945);
+}
+
+/* 折叠态选中：突出显示 icon 底色（而不是右侧箭头） */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[aria-current='page'] {
+  background: transparent !important;
+}
+
+html:not([data-theme='dark']) .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[aria-current='page'] .ef-sidebar-icon {
+  background: rgba(255, 250, 0, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 0, 0.22);
+}
+
+html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[aria-current='page'] .ef-sidebar-icon {
+  /* 选中态：与按钮同系底色 + 更明确的品牌内描边/内发光（不溢出） */
+  background: var(--bg-3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 0, 0.28),
+    inset 0 0 24px rgba(255, 250, 0, 0.06);
+}
+
+.ef-sidebar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 40ms;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-label {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition-delay: 0ms;
+}
+
+.ef-sidebar-arrow {
+  justify-self: end;
+}
+
+/* 折叠态：导航项右侧箭头不显示，避免与图标重叠 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-arrow {
+  display: none;
+}
+
+/* Footer：账号行 */
+.ef-sidebar-footer-item {
+  display: grid;
+  grid-template-columns: 36px 1fr 16px;
+  column-gap: 12px;
+  align-items: center;
+  overflow: hidden;
+  transition: grid-template-columns 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    column-gap 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-item {
+  grid-template-columns: 36px 0fr 0px;
+  column-gap: 0;
+  justify-content: center;
+}
+
+.ef-sidebar-footer-text {
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 40ms;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-text {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition-delay: 0ms;
+}
+
+.ef-sidebar-footer-arrow {
+  justify-self: end;
+}
+
+/* Footer：同步状态行 */
+.ef-sidebar-sync-item {
+  display: grid;
+  grid-template-columns: 1fr 16px;
+  column-gap: 10px;
+  align-items: center;
+  overflow: hidden;
+  padding-left: 16px;
+  padding-right: 16px;
+  transition: grid-template-columns 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    column-gap 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-item {
+  grid-template-columns: 1fr;
+  column-gap: 0;
+  justify-items: center;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.ef-sidebar-sync-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ef-sidebar-sync-text {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 40ms;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-text {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition-delay: 0ms;
+}
+
+.ef-sidebar-sync-arrow {
+  justify-self: end;
+}
+
+/* 折叠态：同步文字不参与布局，确保图标严格居中 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-text {
+  display: none;
+}
+
+/* 折叠态：底部区域更自然（居中 + 去掉“空白感”） */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-item {
+  padding-left: 12px;
+  padding-right: 12px;
+  justify-items: center;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-arrow {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-item {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-icon {
+  justify-content: center;
+  gap: 0;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-arrow {
+  opacity: 0;
+  pointer-events: none;
+}

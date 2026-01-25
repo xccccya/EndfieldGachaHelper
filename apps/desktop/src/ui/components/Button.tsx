@@ -1,6 +1,8 @@
 /**
  * 工业科幻风格按钮组件
- * 基于 Design.md 设计规范
+ * 基于设计系统圆角规范（Design Tokens）
+ * 
+ * 圆角: rounded-md (8px) - 与卡片 (12px) 形成层次
  */
 
 import { forwardRef } from 'react';
@@ -70,7 +72,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       className={`
         relative inline-flex items-center justify-center
-        rounded transition-all duration-200 ease-out
+        rounded-md transition-all duration-200 ease-out
         font-medium
         focus:outline-none focus:ring-2 focus:ring-brand/50 focus:ring-offset-2 focus:ring-offset-bg-0
         disabled:opacity-50 disabled:cursor-not-allowed
@@ -83,7 +85,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     >
       {/* 斜纹装饰背景 */}
       <span
-        className="absolute inset-0 opacity-[0.06] pointer-events-none rounded"
+        className="absolute inset-0 opacity-[0.06] pointer-events-none rounded-md"
         style={{
           backgroundImage: `linear-gradient(
             -45deg,

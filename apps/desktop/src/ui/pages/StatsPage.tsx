@@ -3,7 +3,7 @@
  * 支持角色和武器统计，包含四种卡池类型的标签卡切换
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,12 +18,14 @@ import {
   ChevronDown,
   Gift,
   HelpCircle,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, RarityBadge } from '../components';
-import { useAccounts } from '../../hooks/useEndfield';
-import { getAllUnifiedRecords, calculateUnifiedStats, type UnifiedGachaRecord } from '../../lib/storage';
+import { useAccounts, useGachaRecordsData } from '../../hooks/useEndfield';
+import { charRecordToUnified, weaponRecordToUnified, calculateUnifiedStats, type UnifiedGachaRecord } from '../../lib/storage';
 import { formatDateShort, getTimestamp } from '../../lib/dateUtils';
 import type { GachaCategory } from '@efgachahelper/shared';
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 
 /** 卡池类型标签 */
 type PoolTab = 'special' | 'weapon' | 'standard' | 'beginner';
@@ -55,6 +57,107 @@ type PoolGroupStats = {
   sixStarCount: number;
   fiveStarCount: number;
 };
+
+function easeOutCubic(t: number) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function AnimatedNumber({
+  value,
+  durationMs = 700,
+  className,
+}: {
+  value: number;
+  durationMs?: number;
+  className?: string;
+}) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef<number | null>(null);
+  const fromRef = useRef(0);
+  const toRef = useRef(value);
+
+  useEffect(() => {
+    toRef.current = value;
+
+    if (prefersReducedMotion) {
+      setDisplay(value);
+      return;
+    }
+
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    startRef.current = null;
+    fromRef.current = display;
+
+    const tick = (ts: number) => {
+      if (startRef.current == null) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const p = Math.min(elapsed / durationMs, 1);
+      const eased = easeOutCubic(p);
+      const next = Math.round(fromRef.current + (toRef.current - fromRef.current) * eased);
+      setDisplay(next);
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, durationMs, prefersReducedMotion]);
+
+  return <span className={className}>{display}</span>;
+}
+
+function RarityDistRow({
+  rarity,
+  count,
+  percentage,
+  barClassName,
+  textClassName,
+  unitsLabel,
+}: {
+  rarity: number;
+  count: number;
+  percentage: number;
+  barClassName: string;
+  textClassName: string;
+  unitsLabel: string;
+}) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [animatedPct, setAnimatedPct] = useState(0);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setAnimatedPct(percentage);
+      return;
+    }
+    const id = window.requestAnimationFrame(() => setAnimatedPct(percentage));
+    return () => window.cancelAnimationFrame(id);
+  }, [percentage, prefersReducedMotion]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <RarityBadge rarity={rarity} />
+          <span className="text-sm text-fg-1">{count} {unitsLabel}</span>
+        </div>
+        <span className={`text-sm font-medium ${textClassName}`}>
+          {percentage.toFixed(2)}%
+        </span>
+      </div>
+      <div className="h-3 bg-bg-3 rounded-sm overflow-hidden">
+        <div
+          className={`h-full ${barClassName} ef-progress-fill`}
+          style={{ width: `${animatedPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 /**
  * 计算单个池的6星进度条数据
@@ -162,8 +265,20 @@ function PityProgressBar({
   segment: PitySegment;
   maxPulls?: number;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const percentage = Math.min((segment.pulls / maxPulls) * 100, 100);
   const hasSixStar = !!segment.sixStar;
+  const [animatedPct, setAnimatedPct] = useState(0);
+  
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setAnimatedPct(percentage);
+      return;
+    }
+    // 下一帧触发，确保从 0 → 目标值有过渡
+    const id = window.requestAnimationFrame(() => setAnimatedPct(percentage));
+    return () => window.cancelAnimationFrame(id);
+  }, [percentage, prefersReducedMotion]);
   
   // 根据抽数决定颜色
   const getBarColor = () => {
@@ -191,10 +306,10 @@ function PityProgressBar({
       </div>
       
       {/* 进度条 */}
-      <div className="flex-1 h-4 bg-bg-3 rounded-full overflow-hidden relative">
+      <div className="flex-1 h-4 bg-bg-3 rounded-sm overflow-hidden relative">
         <div
-          className={`h-full ${getBarColor()} transition-all duration-300`}
-          style={{ width: `${percentage}%` }}
+          className={`h-full ${getBarColor()} ef-progress-fill`}
+          style={{ width: `${animatedPct}%` }}
         />
       </div>
       
@@ -225,7 +340,7 @@ function PoolGroupCard({ group }: { group: PoolGroupStats }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border rounded-md overflow-hidden">
       {/* 池名称和概要 */}
       <button
         className="w-full px-4 py-3 bg-bg-2 flex items-center justify-between hover:bg-bg-3 transition-colors"
@@ -254,13 +369,16 @@ function PoolGroupCard({ group }: { group: PoolGroupStats }) {
       </button>
       
       {/* 进度条列表 */}
-      {expanded && group.segments.length > 0 && (
-        <div className="px-4 py-2 bg-bg-1 divide-y divide-border/50">
+      <div
+        className="ef-collapse"
+        data-expanded={expanded ? 'true' : 'false'}
+      >
+        <div className="ef-collapse__inner px-4 py-2 bg-bg-1 divide-y divide-border/50">
           {group.segments.map((segment, idx) => (
             <PityProgressBar key={idx} segment={segment} />
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -271,9 +389,11 @@ function PoolGroupCard({ group }: { group: PoolGroupStats }) {
 function FixedPoolCard({
   poolName,
   records,
+  showTitle = true,
 }: {
   poolName: string;
   records: UnifiedGachaRecord[];
+  showTitle?: boolean;
 }) {
   const segments = calculatePoolSegments(records);
   const sixStarCount = records.filter(r => r.rarity === 6).length;
@@ -292,7 +412,9 @@ function FixedPoolCard({
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-fg-0 px-1">{poolName}</div>
+      {showTitle && (
+        <div className="text-sm font-medium text-fg-0 px-1">{poolName}</div>
+      )}
       {/* 概要信息 */}
       <div className="flex items-center gap-4 px-1 py-2">
         <span className="text-fg-1">
@@ -321,19 +443,42 @@ function FixedPoolCard({
 export function StatsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { activeUid, activeAccount } = useAccounts();
+  const { activeUid, activeAccount, loading: accountsLoading } = useAccounts();
+  const { gachaRecords, weaponRecords, loading: recordsLoading } = useGachaRecordsData(activeUid);
+  const prefersReducedMotion = usePrefersReducedMotion();
   
   // 类别筛选
   const [categoryFilter, setCategoryFilter] = useState<GachaCategory | 'all'>('all');
   
   // 卡池标签
   const [activePoolTab, setActivePoolTab] = useState<PoolTab>('special');
+  const tabs: readonly PoolTab[] = useMemo(() => ['special', 'weapon', 'standard', 'beginner'] as const, []);
+  const prevTabRef = useRef<PoolTab>(activePoolTab);
+  const tabDir = useMemo(() => {
+    const prevIdx = tabs.indexOf(prevTabRef.current);
+    const nextIdx = tabs.indexOf(activePoolTab);
+    return nextIdx >= prevIdx ? 1 : -1;
+  }, [activePoolTab, tabs]);
 
-  // 获取统一格式的所有记录
+  useEffect(() => {
+    prevTabRef.current = activePoolTab;
+  }, [activePoolTab]);
+
+  // 将记录转换为统一格式
   const allRecords = useMemo(() => {
-    if (!activeUid) return [];
-    return getAllUnifiedRecords(activeUid);
-  }, [activeUid]);
+    const charUnified = gachaRecords.map(charRecordToUnified);
+    const weaponUnified = weaponRecords.map(weaponRecordToUnified);
+    const all = [...charUnified, ...weaponUnified];
+    
+    // 按时间排序（最新的在前）
+    all.sort((a, b) => {
+      const timeA = getTimestamp(a.gachaTs);
+      const timeB = getTimestamp(b.gachaTs);
+      return timeB - timeA;
+    });
+    
+    return all;
+  }, [gachaRecords, weaponRecords]);
 
   // 根据类别筛选记录
   const records = useMemo(() => {
@@ -354,11 +499,6 @@ export function StatsPage() {
   [allRecords]);
 
   // 按卡池类型分组的记录
-  // 使用精确的 poolId 判断：
-  // - 常驻池: poolId === "standard"
-  // - 新手池: poolId === "beginner"  
-  // - 限定池: 角色池且 poolId 不是 standard/beginner
-  // - 武器池: category === 'weapon'
   const poolGroupedData = useMemo(() => {
     // 限定池（角色，poolId 不是 standard 或 beginner）
     const specialRecords = allRecords.filter(
@@ -368,7 +508,7 @@ export function StatsPage() {
     );
     
     // 武器池（所有武器记录，按池分组展示）
-    const weaponRecords = allRecords.filter(
+    const weaponPoolRecords = allRecords.filter(
       r => r.category === 'weapon'
     );
     
@@ -384,7 +524,7 @@ export function StatsPage() {
 
     return {
       special: groupRecordsByPool(specialRecords),
-      weapon: groupRecordsByPool(weaponRecords),
+      weapon: groupRecordsByPool(weaponPoolRecords),
       standard: standardRecords,
       beginner: beginnerRecords,
     };
@@ -396,6 +536,20 @@ export function StatsPage() {
       .filter((r) => r.rarity === 6)
       .slice(0, 5);
   }, [records]);
+
+  // 加载状态
+  if (accountsLoading || recordsLoading) {
+    return (
+      <Card>
+        <CardContent>
+          <div className="text-center py-12">
+            <Loader2 size={48} className="mx-auto mb-4 text-brand animate-spin" />
+            <h3 className="text-lg font-semibold mb-2">{t('common.loading')}</h3>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!activeAccount) {
     return (
@@ -451,23 +605,82 @@ export function StatsPage() {
 
   return (
     <div className="space-y-4">
-      {/* 类别筛选 */}
+      {/* 筛选 + 概览（合并为一个卡片） */}
       <Card>
-        <CardContent className="py-3">
+        <CardContent>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-fg-1">{t('stats.filterBy')}</span>
-            <div className="relative">
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value as GachaCategory | 'all')}
-                className="appearance-none bg-bg-2 border border-border rounded-lg px-4 py-2 pr-10 text-sm text-fg-0 focus:outline-none focus:ring-2 focus:ring-brand/50"
+            {/* 三段式筛选按钮（全部 / 角色 / 武器） */}
+            <div
+              className="ef-seg-filter relative grid grid-cols-3 rounded-md p-1 text-sm"
+              role="tablist"
+              aria-label={t('stats.filterBy')}
+            >
+              {/* 滑动高亮底座 */}
+              <div
+                aria-hidden="true"
+                className={[
+                  'ef-seg-filter__indicator absolute inset-y-1 w-1/3 rounded-md',
+                  prefersReducedMotion ? '' : 'transition-transform duration-300 ease-out',
+                ].join(' ')}
+                style={{
+                  transform:
+                    categoryFilter === 'all'
+                      ? 'translateX(0%)'
+                      : categoryFilter === 'character'
+                        ? 'translateX(100%)'
+                        : 'translateX(200%)',
+                }}
+              />
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={categoryFilter === 'all'}
+                onClick={() => setCategoryFilter('all')}
+                className={[
+                  'relative z-10 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5',
+                  'transition-all duration-200',
+                  categoryFilter === 'all' ? 'text-fg-0 font-semibold' : 'text-fg-1 hover:text-fg-0',
+                  prefersReducedMotion ? '' : 'active:scale-[0.98]',
+                ].join(' ')}
               >
-                <option value="all">{t('stats.allCategories')}</option>
-                <option value="character">{t('stats.characterCategory')}</option>
-                <option value="weapon">{t('stats.weaponCategory')}</option>
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-2 pointer-events-none" />
+                <BarChart3 size={16} className={categoryFilter === 'all' ? 'text-brand' : 'text-fg-2'} />
+                {t('stats.allCategories')}
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={categoryFilter === 'character'}
+                onClick={() => setCategoryFilter('character')}
+                className={[
+                  'relative z-10 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5',
+                  'transition-all duration-200',
+                  categoryFilter === 'character' ? 'text-fg-0 font-semibold' : 'text-fg-1 hover:text-fg-0',
+                  prefersReducedMotion ? '' : 'active:scale-[0.98]',
+                ].join(' ')}
+              >
+                <User size={16} className={categoryFilter === 'character' ? 'text-blue-400' : 'text-fg-2'} />
+                {t('stats.characterCategory')}
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={categoryFilter === 'weapon'}
+                onClick={() => setCategoryFilter('weapon')}
+                className={[
+                  'relative z-10 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5',
+                  'transition-all duration-200',
+                  categoryFilter === 'weapon' ? 'text-fg-0 font-semibold' : 'text-fg-1 hover:text-fg-0',
+                  prefersReducedMotion ? '' : 'active:scale-[0.98]',
+                ].join(' ')}
+              >
+                <Sword size={16} className={categoryFilter === 'weapon' ? 'text-orange-400' : 'text-fg-2'} />
+                {t('stats.weaponCategory')}
+              </button>
             </div>
+
             {/* 分类别统计快速预览 */}
             <div className="flex-1 flex justify-end gap-4 text-sm">
               <span className="flex items-center gap-1 text-blue-400">
@@ -478,45 +691,44 @@ export function StatsPage() {
               </span>
             </div>
           </div>
+
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              icon={<Hash size={24} />}
+              iconBg="bg-brand/20"
+              iconColor="text-brand"
+              value={stats.total}
+              label={t('stats.totalPulls')}
+            />
+            <StatCard
+              icon={<Star size={24} />}
+              iconBg="bg-red-500/20"
+              iconColor="text-red-400"
+              value={stats.byRarity[6] || 0}
+              label={t('stats.total6Star')}
+              subValue={`${rate6}%`}
+            />
+            <StatCard
+              icon={<Sparkles size={24} />}
+              iconBg="bg-yellow-500/20"
+              iconColor="text-yellow-400"
+              value={stats.byRarity[5] || 0}
+              label={t('stats.total5Star')}
+              subValue={`${rate5}%`}
+            />
+            <StatCard
+              icon={<TrendingUp size={24} />}
+              iconBg="bg-purple-500/20"
+              iconColor="text-purple-400"
+              value={stats.pity}
+              label={t('stats.currentPity')}
+              subValue={t('stats.pityHint')}
+            />
+          </div>
         </CardContent>
       </Card>
-      
-      {/* 概览统计 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={<Hash size={24} />}
-          iconBg="bg-brand/20"
-          iconColor="text-brand"
-          value={stats.total}
-          label={t('stats.totalPulls')}
-        />
-        <StatCard
-          icon={<Star size={24} />}
-          iconBg="bg-red-500/20"
-          iconColor="text-red-400"
-          value={stats.byRarity[6] || 0}
-          label={t('stats.total6Star')}
-          subValue={`${rate6}%`}
-        />
-        <StatCard
-          icon={<Sparkles size={24} />}
-          iconBg="bg-yellow-500/20"
-          iconColor="text-yellow-400"
-          value={stats.byRarity[5] || 0}
-          label={t('stats.total5Star')}
-          subValue={`${rate5}%`}
-        />
-        <StatCard
-          icon={<TrendingUp size={24} />}
-          iconBg="bg-purple-500/20"
-          iconColor="text-purple-400"
-          value={stats.pity}
-          label={t('stats.currentPity')}
-          subValue={t('stats.pityHint')}
-        />
-      </div>
 
-      {/* 卡池统计 - 标签卡切换（上移到这里） */}
+      {/* 卡池统计 - 标签卡切换 */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -532,10 +744,11 @@ export function StatsPage() {
         <CardContent>
           {/* 标签栏 */}
           <div className="flex border-b border-border mb-4">
-            {(['special', 'weapon', 'standard', 'beginner'] as PoolTab[]).map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                type="button"
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   activePoolTab === tab
                     ? 'border-brand text-brand'
                     : 'border-transparent text-fg-1 hover:text-fg-0'
@@ -554,7 +767,7 @@ export function StatsPage() {
           <div className="min-h-[200px]">
             {/* 限定池 - 分池展示 */}
             {activePoolTab === 'special' && (
-              <div className="space-y-3">
+              <div className={`space-y-3 ef-tab-panel ${tabDir > 0 ? 'ef-tab-panel--from-right' : 'ef-tab-panel--from-left'}`}>
                 {poolGroupedData.special.length === 0 ? (
                   <div className="text-center py-8 text-fg-2">
                     <User size={32} className="mx-auto mb-2 opacity-30" />
@@ -570,7 +783,7 @@ export function StatsPage() {
 
             {/* 武器池 - 分池展示 */}
             {activePoolTab === 'weapon' && (
-              <div className="space-y-3">
+              <div className={`space-y-3 ef-tab-panel ${tabDir > 0 ? 'ef-tab-panel--from-right' : 'ef-tab-panel--from-left'}`}>
                 {poolGroupedData.weapon.length === 0 ? (
                   <div className="text-center py-8 text-fg-2">
                     <Sword size={32} className="mx-auto mb-2 opacity-30" />
@@ -586,24 +799,30 @@ export function StatsPage() {
 
             {/* 常驻池 - 直接展示 */}
             {activePoolTab === 'standard' && (
-              <FixedPoolCard
+              <div className={`ef-tab-panel ${tabDir > 0 ? 'ef-tab-panel--from-right' : 'ef-tab-panel--from-left'}`}>
+                <FixedPoolCard
                 poolName="常驻池"
                 records={poolGroupedData.standard}
+                  showTitle={false}
               />
+              </div>
             )}
 
             {/* 新手池 - 直接展示 */}
             {activePoolTab === 'beginner' && (
-              <FixedPoolCard
+              <div className={`ef-tab-panel ${tabDir > 0 ? 'ef-tab-panel--from-right' : 'ef-tab-panel--from-left'}`}>
+                <FixedPoolCard
                 poolName="新手池"
                 records={poolGroupedData.beginner}
+                  showTitle={false}
               />
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* 最近6星和稀有度分布（下移到底部） */}
+      {/* 最近6星和稀有度分布 */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* 最近6星 */}
         <Card>
@@ -690,23 +909,15 @@ export function StatsPage() {
                   const colorConfig = colors[rarity] ?? { bar: 'bg-gray-500', text: 'text-gray-400' };
 
                   return (
-                    <div key={rarity}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <RarityBadge rarity={rarity} />
-                          <span className="text-sm text-fg-1">{count} {t('stats.units')}</span>
-                        </div>
-                        <span className={`text-sm font-medium ${colorConfig.text}`}>
-                          {percentage.toFixed(2)}%
-                        </span>
-                      </div>
-                      <div className="h-3 bg-bg-3 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${colorConfig.bar} transition-all duration-500`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
+                    <RarityDistRow
+                      key={rarity}
+                      rarity={rarity}
+                      count={count}
+                      percentage={percentage}
+                      barClassName={colorConfig.bar}
+                      textClassName={colorConfig.text}
+                      unitsLabel={t('stats.units')}
+                    />
                   );
                 });
               })()}
@@ -734,20 +945,22 @@ function StatCard({
   subValue?: string;
 }) {
   return (
-    <Card className="p-4">
+    <div className="ef-stat-tile p-4">
       <div className="flex items-start gap-3">
-        <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center ${iconColor}`}>
+        <div className={`w-12 h-12 rounded-md ${iconBg} flex items-center justify-center ${iconColor}`}>
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-2xl font-bold text-fg-0">{value}</div>
+          <div className="text-2xl font-bold text-fg-0 tabular-nums">
+            {typeof value === 'number' ? <AnimatedNumber value={value} /> : value}
+          </div>
           <div className="text-sm text-fg-1 truncate">{label}</div>
           {subValue && (
             <div className="text-xs text-fg-2 mt-0.5">{subValue}</div>
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

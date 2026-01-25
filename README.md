@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  一款用于管理《终末地》抽卡记录的桌面工具
+  一款用于管理《明日方舟：终末地》抽卡（寻访）记录的桌面工具。
 </p>
 
 <p align="center">
@@ -19,26 +19,37 @@
 
 ## 功能
 
-- 抽卡记录同步与查询
-- 抽卡数据统计分析
-- 保底进度追踪
+- 抽卡记录官方接口拉取同步
+- 抽卡数据统计分析（限定/常驻/新手/武器）
+- 导出/导入数据（JSON/CSV）
 - 多账号管理
 - 云端数据同步
-- 中英双语支持
-
+- 国际化支持
+- 深/浅色模式切换
+- 干员/武器图标素材添加（咕咕咕）
+- 抽卡排行—根据使用了云同步玩家的数据进行排行（依旧咕咕咕）
 ## 预览
 
 <p align="center">
-  <img src="apps/desktop/screenshots/image1.png" width="45%" />
-  <img src="apps/desktop/screenshots/image2.png" width="45%" />
+  <img src="apps/desktop/screenshots/1.png" width="90%" />
 </p>
 <p align="center">
-  <img src="apps/desktop/screenshots/image3.png" width="45%" />
-  <img src="apps/desktop/screenshots/image4.png" width="45%" />
+  <img src="apps/desktop/screenshots/2.png" width="90%" />
 </p>
 <p align="center">
-  <img src="apps/desktop/screenshots/image5.png" width="45%" />
-  <img src="apps/desktop/screenshots/image6.png" width="45%" />
+  <img src="apps/desktop/screenshots/3.png" width="90%" />
+</p>
+<p align="center">
+  <img src="apps/desktop/screenshots/4.png" width="90%" />
+</p>
+<p align="center">
+  <img src="apps/desktop/screenshots/5.png" width="90%" />
+</p>
+<p align="center">
+  <img src="apps/desktop/screenshots/6.png" width="90%" />
+</p>
+<p align="center">
+  <img src="apps/desktop/screenshots/7.png" width="90%" />
 </p>
 
 ## 技术栈

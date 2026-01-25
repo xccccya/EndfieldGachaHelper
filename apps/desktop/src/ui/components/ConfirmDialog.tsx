@@ -60,13 +60,13 @@ export function ConfirmDialog({
 
       {/* Dialog */}
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-bg-1 shadow-2xl overflow-hidden">
+        <div className="w-full max-w-md rounded-lg border border-border bg-bg-1 shadow-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-border bg-bg-3/40">
             <div className="flex items-start gap-3">
               {icon ? (
                 <div
                   className={`
-                    mt-0.5 w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                    mt-0.5 w-10 h-10 rounded-md flex items-center justify-center shrink-0
                     ${danger ? 'bg-red-500/15 text-red-400 border border-red-500/30' : 'bg-brand/15 text-brand border border-brand/30'}
                   `}
                 >

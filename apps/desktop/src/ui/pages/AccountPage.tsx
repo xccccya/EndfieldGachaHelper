@@ -94,16 +94,18 @@ export function AccountPage() {
         onCancel={() => setDeleteUid(null)}
         onConfirm={() => {
           if (!deleteUid) return;
-          removeAccount(deleteUid);
-          setDeleteUid(null);
-          void refresh();
+          void (async () => {
+            await removeAccount(deleteUid);
+            setDeleteUid(null);
+            refresh();
+          })();
         }}
       />
 
       {/* 成功提示 Toast - 修复标题栏遮挡问题（标题栏高度 38px） */}
       {showSuccess && (
         <div className="fixed top-14 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-500/90 text-white shadow-lg backdrop-blur-sm">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-green-500/90 text-white shadow-lg backdrop-blur-sm">
             <CheckCircle2 size={20} />
             <span className="font-medium">{t('account.addSuccess')}</span>
           </div>
@@ -114,7 +116,7 @@ export function AccountPage() {
       <Card>
         <CardHeader accent>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-brand/20 flex items-center justify-center border border-brand/30">
+            <div className="w-12 h-12 rounded-md bg-brand/20 flex items-center justify-center border border-brand/30">
               <UserPlus size={24} className="text-brand" />
             </div>
             <div>
@@ -139,7 +141,7 @@ export function AccountPage() {
               />
               
               {error && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                   <AlertCircle size={16} className="shrink-0" />
                   <span className="flex-1">{error}</span>
                   <button
@@ -198,7 +200,7 @@ export function AccountPage() {
               className="
                 group
                 inline-flex items-center justify-center
-                w-9 h-9 rounded-lg
+                w-9 h-9 rounded-md
                 text-fg-2 hover:text-fg-0 hover:bg-bg-3
                 transition-all duration-150
                 active:scale-95
@@ -217,7 +219,7 @@ export function AccountPage() {
             <div className="space-y-4">
               <div className="flex gap-4 group">
                 <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center text-sm font-bold border border-brand/30 group-hover:bg-brand/30 transition-colors">
+                  <div className="w-8 h-8 rounded-md bg-brand/20 text-brand flex items-center justify-center text-sm font-bold border border-brand/30 group-hover:bg-brand/30 transition-colors">
                     1
                   </div>
                   <div className="w-0.5 h-full bg-border mt-2" />
@@ -232,7 +234,7 @@ export function AccountPage() {
 
               <div className="flex gap-4 group">
                 <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center text-sm font-bold border border-brand/30 group-hover:bg-brand/30 transition-colors">
+                  <div className="w-8 h-8 rounded-md bg-brand/20 text-brand flex items-center justify-center text-sm font-bold border border-brand/30 group-hover:bg-brand/30 transition-colors">
                     2
                   </div>
                   <div className="w-0.5 h-full bg-border mt-2" />
@@ -247,7 +249,7 @@ export function AccountPage() {
 
               <div className="flex gap-4 group">
                 <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-lg bg-brand/20 text-brand flex items-center justify-center text-sm font-bold border border-brand/30 group-hover:bg-brand/30 transition-colors">
+                  <div className="w-8 h-8 rounded-md bg-brand/20 text-brand flex items-center justify-center text-sm font-bold border border-brand/30 group-hover:bg-brand/30 transition-colors">
                     3
                   </div>
                 </div>
@@ -256,7 +258,7 @@ export function AccountPage() {
                   <div className="text-sm text-fg-1 leading-relaxed">
                     {t('account.step3')}
                   </div>
-                  <div className="mt-3 p-3 rounded-lg bg-bg-1 border border-border font-mono text-xs text-fg-2 overflow-x-auto">
+                  <div className="mt-3 p-3 rounded-md bg-bg-1 border border-border font-mono text-xs text-fg-2 overflow-x-auto">
                     <span className="text-fg-2/60">{'{'}</span>
                     <span className="text-blue-400">"content"</span>
                     <span className="text-fg-2/60">: </span>
@@ -272,9 +274,9 @@ export function AccountPage() {
               <button
                 type="button"
                 onClick={() => { void openExternal(HG_WEBSITE_URL); }}
-                className="group flex-1 min-w-[180px] flex items-center gap-3 px-4 py-3.5 rounded-xl bg-bg-1 border border-border text-fg-1 hover:border-brand/50 hover:bg-bg-2 transition-all cursor-pointer"
+                className="group flex-1 min-w-[180px] flex items-center gap-3 px-4 py-3.5 rounded-md bg-bg-1 border border-border text-fg-1 hover:border-brand/50 hover:bg-bg-2 transition-all cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-lg bg-fg-2/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors">
+                <div className="w-10 h-10 rounded-md bg-fg-2/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors">
                   <Globe size={20} className="text-fg-2 group-hover:text-brand transition-colors" />
                 </div>
                 <div className="flex-1 text-left">
@@ -286,9 +288,9 @@ export function AccountPage() {
               <button
                 type="button"
                 onClick={() => { void openExternal(TOKEN_API_URL); }}
-                className="group flex-1 min-w-[180px] flex items-center gap-3 px-4 py-3.5 rounded-xl bg-brand/10 border border-brand/30 text-brand hover:bg-brand/20 hover:border-brand/50 transition-all cursor-pointer"
+                className="group flex-1 min-w-[180px] flex items-center gap-3 px-4 py-3.5 rounded-md bg-brand/10 border border-brand/30 text-brand hover:bg-brand/20 hover:border-brand/50 transition-all cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-lg bg-brand/20 flex items-center justify-center group-hover:bg-brand/30 transition-colors">
+                <div className="w-10 h-10 rounded-md bg-brand/20 flex items-center justify-center group-hover:bg-brand/30 transition-colors">
                   <Key size={20} className="text-brand" />
                 </div>
                 <div className="flex-1 text-left">
@@ -300,7 +302,7 @@ export function AccountPage() {
             </div>
 
             {/* 安全提示 */}
-            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-green-500/5 border border-green-500/20">
+            <div className="flex items-start gap-3 p-3.5 rounded-md bg-green-500/5 border border-green-500/20">
               <Shield size={18} className="text-green-500 shrink-0 mt-0.5" />
               <div className="text-xs text-green-400/90 leading-relaxed">
                 <span className="font-medium">安全说明：</span>
@@ -316,7 +318,7 @@ export function AccountPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+              <div className="w-12 h-12 rounded-md bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
                 <User size={24} className="text-blue-400" />
               </div>
               <div>
@@ -326,7 +328,7 @@ export function AccountPage() {
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => { void refresh(); }} icon={<RefreshCw size={16} />}>
+            <Button variant="ghost" size="sm" onClick={() => { refresh(); }} icon={<RefreshCw size={16} />}>
               {t('common.refresh')}
             </Button>
           </div>
@@ -334,7 +336,7 @@ export function AccountPage() {
         <CardContent>
           {accounts.length === 0 ? (
             <div className="text-center py-12 text-fg-2">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-fg-2/5 flex items-center justify-center">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-lg bg-fg-2/5 flex items-center justify-center">
                 <User size={40} className="opacity-30" />
               </div>
               <p className="text-lg font-medium text-fg-1 mb-1">暂无账号</p>
@@ -346,17 +348,17 @@ export function AccountPage() {
                 <div
                   key={account.uid}
                   className={`
-                    group flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer
+                    group flex items-center gap-4 p-4 rounded-md border transition-all cursor-pointer
                     ${activeUid === account.uid 
                       ? 'border-brand bg-brand/5 shadow-[0_0_0_1px_rgba(255,250,0,0.2)]' 
                       : 'border-border bg-bg-2 hover:border-fg-2/30 hover:bg-bg-2/80'
                     }
                   `}
-                  onClick={() => { void selectAccount(account.uid); }}
+                  onClick={() => { selectAccount(account.uid); }}
                 >
                   {/* 头像 */}
                   <div className={`
-                    w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold transition-all
+                    w-14 h-14 rounded-md flex items-center justify-center text-xl font-bold transition-all
                     ${activeUid === account.uid 
                       ? 'bg-brand text-black shadow-lg shadow-brand/20' 
                       : 'bg-fg-2/10 text-fg-1 group-hover:bg-fg-2/20'
@@ -403,7 +405,7 @@ export function AccountPage() {
                       e.stopPropagation();
                       handleRemoveAccount(account.uid);
                     }}
-                    className="p-2.5 rounded-lg text-fg-2/50 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                    className="p-2.5 rounded-md text-fg-2/50 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
                     title="删除账号"
                   >
                     <Trash2 size={18} />

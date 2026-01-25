@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import {
   Cloud,
   CloudOff,
@@ -29,6 +30,7 @@ import { formatDistanceToNow } from '../../lib/dateUtils';
 
 export function CloudSyncPage() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { status, user, isLoggedIn, autoSync, lastSyncAt, syncError } = useSyncConfig();
   const { logout, toggleAutoSync, manualSync, cleanupDuplicates } = useSyncAuth();
   const [syncing, setSyncing] = useState(false);
@@ -48,6 +50,21 @@ export function CloudSyncPage() {
   // 弹窗状态
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  // 支持外部（例如托盘菜单）触发：打开云同步页后直接弹出登录弹窗
+  useEffect(() => {
+    const shouldOpenAuth = searchParams.get('auth') === '1';
+    if (!shouldOpenAuth) return;
+
+    if (!isLoggedIn) {
+      setAuthModalOpen(true);
+    }
+
+    // 清理 query 参数，避免重复触发
+    const next = new URLSearchParams(searchParams);
+    next.delete('auth');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, isLoggedIn]);
   
   // 处理登出
   const handleLogout = useCallback(async () => {
@@ -207,9 +224,9 @@ export function CloudSyncPage() {
           {isLoggedIn && user ? (
             <div className="space-y-4">
               {/* 账号信息 */}
-              <div className="p-4 rounded-lg bg-bg-2 space-y-3">
+              <div className="p-4 rounded-md bg-bg-2 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-brand/20 flex items-center justify-center text-brand font-bold text-lg border border-brand/30">
+                  <div className="w-12 h-12 rounded-md bg-brand/20 flex items-center justify-center text-brand font-bold text-lg border border-brand/30">
                     {user.email.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -231,7 +248,7 @@ export function CloudSyncPage() {
               
               {/* 云端数据统计 */}
               {cloudStatus && cloudStatus.accounts.length > 0 && (
-                <div className="p-4 rounded-lg bg-bg-2 space-y-3">
+                <div className="p-4 rounded-md bg-bg-2 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-medium text-fg-0">
                       <Database size={16} className="text-brand" />
@@ -264,7 +281,7 @@ export function CloudSyncPage() {
                   ))}
                   {/* 清理结果提示 */}
                   {cleanResult && (
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 text-sm text-green-400">
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-green-500/10 text-sm text-green-400">
                       <CheckCircle2 size={14} />
                       <span>
                         {cleanResult.deleted > 0
@@ -277,7 +294,7 @@ export function CloudSyncPage() {
               )}
               
               {/* 同步操作 */}
-              <div className="p-4 rounded-lg border border-border space-y-4">
+              <div className="p-4 rounded-md border border-border space-y-4">
                 {/* 手动同步按钮 */}
                 <Button
                   variant="accent"
@@ -291,7 +308,7 @@ export function CloudSyncPage() {
                 
                 {/* 同步结果提示 */}
                 {syncResult && (
-                  <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
+                  <div className={`flex items-start gap-2 p-3 rounded-md text-sm ${
                     syncResult.success 
                       ? 'bg-green-500/10 text-green-400' 
                       : 'bg-red-500/10 text-red-400'
@@ -362,7 +379,7 @@ export function CloudSyncPage() {
                 </div>
                 
                 {syncError && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 text-sm text-red-400">
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-red-500/10 text-sm text-red-400">
                     <AlertCircle size={16} className="shrink-0 mt-0.5" />
                     <span>{syncError}</span>
                   </div>
@@ -381,8 +398,16 @@ export function CloudSyncPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* 登录过期提示 */}
+              {syncError && (
+                <div className="flex items-start gap-2 p-3 rounded-md bg-orange-500/10 text-sm text-orange-400">
+                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                  <span>{syncError}</span>
+                </div>
+              )}
+              
               {/* 未登录提示 */}
-              <div className="p-6 rounded-lg bg-bg-2 text-center space-y-4">
+              <div className="p-6 rounded-md bg-bg-2 text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center mx-auto">
                   <Cloud size={32} className="text-brand" />
                 </div>
@@ -407,7 +432,7 @@ export function CloudSyncPage() {
               
               {/* 功能说明 */}
               <div className="space-y-2">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-2">
+                <div className="flex items-start gap-3 p-3 rounded-md bg-bg-2">
                   <Shield size={18} className="text-brand shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium text-fg-0 text-sm">
@@ -418,7 +443,7 @@ export function CloudSyncPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-2">
+                <div className="flex items-start gap-3 p-3 rounded-md bg-bg-2">
                   <RefreshCw size={18} className="text-brand shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium text-fg-0 text-sm">
@@ -429,7 +454,7 @@ export function CloudSyncPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-2">
+                <div className="flex items-start gap-3 p-3 rounded-md bg-bg-2">
                   <Settings size={18} className="text-brand shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium text-fg-0 text-sm">
@@ -440,7 +465,7 @@ export function CloudSyncPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-bg-2">
+                <div className="flex items-start gap-3 p-3 rounded-md bg-bg-2">
                   <EyeOff size={18} className="text-brand shrink-0 mt-0.5" />
                   <div>
                     <div className="font-medium text-fg-0 text-sm">

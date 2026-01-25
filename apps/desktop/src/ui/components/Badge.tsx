@@ -1,5 +1,8 @@
 /**
  * 徽章组件
+ * 基于设计系统圆角规范（Design Tokens）
+ * 
+ * 圆角: rounded-xs (4px) - 小元素
  */
 
 import type { HTMLAttributes, ReactNode } from 'react';
@@ -41,7 +44,7 @@ export function Badge({ variant = 'default', children, className = '', ...props 
     <span
       className={`
         inline-flex items-center px-2 py-0.5
-        text-xs font-semibold rounded
+        text-xs font-semibold rounded-xs
         border
         ${variantClasses[variant]}
         ${className}

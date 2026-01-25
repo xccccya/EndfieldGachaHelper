@@ -197,7 +197,7 @@ export function SyncAuthModal({ open, onOpenChange, initialMode = 'login' }: Syn
       <div className="p-6 bg-bg-1">
         {/* 头部 */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-brand/20 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-md bg-brand/20 flex items-center justify-center">
             <Cloud className="w-6 h-6 text-brand" />
           </div>
           <div className="flex-1 min-w-0">
@@ -208,7 +208,7 @@ export function SyncAuthModal({ open, onOpenChange, initialMode = 'login' }: Syn
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-2 hover:text-fg-0 hover:bg-bg-2 transition-colors"
+            className="w-8 h-8 rounded-md flex items-center justify-center text-fg-2 hover:text-fg-0 hover:bg-bg-2 transition-colors"
             aria-label={t('common.dismiss', '关闭')}
           >
             <X size={18} />
@@ -356,7 +356,7 @@ export function SyncAuthModal({ open, onOpenChange, initialMode = 'login' }: Syn
             
             {/* 错误提示 */}
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+              <div className="p-3 rounded-md bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
                 {error}
               </div>
             )}

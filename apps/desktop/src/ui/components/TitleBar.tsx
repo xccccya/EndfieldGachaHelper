@@ -11,7 +11,12 @@ import { Minus, Square, X, Copy, Hexagon } from 'lucide-react';
 
 const appWindow = getCurrentWindow();
 
-export function TitleBar() {
+export type TitleBarProps = {
+  /** 点击关闭按钮的回调，用于触发关闭确认逻辑 */
+  onCloseClick?: () => void;
+};
+
+export function TitleBar({ onCloseClick }: TitleBarProps = {}) {
   const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -81,13 +86,20 @@ export function TitleBar() {
     }
   }, []);
 
+  // 处理关闭按钮点击
+  // 如果提供了 onCloseClick 回调，则调用它（用于显示确认弹窗）
+  // 否则触发原生窗口关闭事件（会被 Rust 端拦截并发送事件到前端）
   const handleClose = useCallback(async () => {
-    try {
-      await appWindow.close();
-    } catch (err) {
-      console.error('[TitleBar] Failed to close:', err);
+    if (onCloseClick) {
+      onCloseClick();
+    } else {
+      try {
+        await appWindow.close();
+      } catch (err) {
+        console.error('[TitleBar] Failed to close:', err);
+      }
     }
-  }, []);
+  }, [onCloseClick]);
 
   return (
     <header className="titlebar">

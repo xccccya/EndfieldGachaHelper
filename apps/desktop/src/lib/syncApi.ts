@@ -87,8 +87,124 @@ class SyncApiError extends Error {
   }
 }
 
+// Token 管理：用于自动刷新
+const SYNC_CONFIG_KEY = 'efgh_sync_config';
+
+type SyncConfigForRefresh = {
+  accessToken?: string;
+  refreshToken?: string;
+};
+
+function getSyncConfigTokens(): SyncConfigForRefresh {
+  try {
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    if (raw) {
+      return JSON.parse(raw) as SyncConfigForRefresh;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+function updateSyncConfigTokens(tokens: { accessToken: string; refreshToken: string }): void {
+  try {
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+
+    const parseObject = (json: string): Record<string, unknown> | null => {
+      try {
+        const v: unknown = JSON.parse(json);
+        if (!v || typeof v !== 'object') return null;
+        return v as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    };
+
+    const prev = raw ? (parseObject(raw) ?? {}) : {};
+    const next: Record<string, unknown> = {
+      ...prev,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      syncError: null,
+    };
+
+    localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(next));
+    // 通知状态变化
+    window.dispatchEvent(new CustomEvent('efgh:sync_change'));
+  } catch {
+    // ignore
+  }
+}
+
+function clearSyncConfig(errorMessage?: string): void {
+  try {
+    localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      autoSync: false,
+      lastSyncAt: null,
+      syncError: errorMessage ?? null,
+    }));
+    window.dispatchEvent(new CustomEvent('efgh:sync_change'));
+  } catch {
+    // ignore
+  }
+}
+
+// 防止并发刷新
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
+
 /**
- * 发送 API 请求
+ * 尝试刷新 access token
+ */
+async function tryRefreshToken(): Promise<{ accessToken: string; refreshToken: string } | null> {
+  // 如果已经在刷新，等待现有的刷新完成
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  const { refreshToken } = getSyncConfigTokens();
+  if (!refreshToken) {
+    return null;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const fetchFn = isTauri() ? tauriFetch : fetch;
+      const response = await fetchFn(`${getApiUrl()}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        // 刷新失败，清除登录状态并保留错误信息
+        console.log('[SyncApi] Refresh token 已过期，需要重新登录');
+        clearSyncConfig('登录已过期，请重新登录');
+        return null;
+      }
+
+      const data = await response.json() as { accessToken: string; refreshToken: string };
+      // 更新本地存储的 token
+      updateSyncConfigTokens(data);
+      console.log('[SyncApi] Token 已自动刷新');
+      return data;
+    } catch {
+      // 刷新失败，清除登录状态并保留错误信息
+      clearSyncConfig('登录已过期，请重新登录');
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+/**
+ * 发送 API 请求（带自动 token 刷新）
  */
 async function request<T>(
   endpoint: string,
@@ -101,17 +217,17 @@ async function request<T>(
   const { method = 'GET', body, accessToken } = options;
   const url = `${getApiUrl()}${endpoint}`;
   
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-  
-  const fetchFn = isTauri() ? tauriFetch : fetch;
-  
-  try {
+  const doRequest = async (token?: string): Promise<T> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const fetchFn = isTauri() ? tauriFetch : fetch;
+    
     const fetchOptions: RequestInit = {
       method,
       headers,
@@ -122,7 +238,6 @@ async function request<T>(
     }
     
     const response = await fetchFn(url, fetchOptions);
-    
     const data: unknown = await response.json();
     
     if (!response.ok) {
@@ -134,7 +249,33 @@ async function request<T>(
     }
     
     return data as T;
+  };
+  
+  try {
+    return await doRequest(accessToken);
   } catch (error) {
+    // 如果是 401 且有 accessToken，尝试刷新 token 并重试
+    if (error instanceof SyncApiError && error.statusCode === 401 && accessToken) {
+      console.log('[SyncApi] Access token 过期，尝试刷新...');
+      const newTokens = await tryRefreshToken();
+      
+      if (newTokens) {
+        // 使用新 token 重试请求
+        try {
+          return await doRequest(newTokens.accessToken);
+        } catch (retryError) {
+          if (retryError instanceof SyncApiError) {
+            throw retryError;
+          }
+          const message = retryError instanceof Error ? retryError.message : '网络请求失败';
+          throw new SyncApiError(0, message);
+        }
+      } else {
+        // 刷新失败，抛出原始错误（会触发重新登录）
+        throw new SyncApiError(401, '登录已过期，请重新登录');
+      }
+    }
+    
     if (error instanceof SyncApiError) {
       throw error;
     }

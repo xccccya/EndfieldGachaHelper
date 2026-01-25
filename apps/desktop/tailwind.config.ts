@@ -30,6 +30,14 @@ export default {
         },
       },
       borderRadius: {
+        /* 设计系统圆角 Token */
+        xs: 'var(--radius-xs)',     /* 4px - 徽章、标签 */
+        sm: 'var(--radius-sm)',     /* 6px - 小按钮、进度条 */
+        md: 'var(--radius-md)',     /* 8px - 按钮、输入框 */
+        lg: 'var(--radius-lg)',     /* 12px - 卡片、面板 */
+        xl: 'var(--radius-xl)',     /* 16px - 主容器（备用） */
+        full: 'var(--radius-full)', /* 圆形 */
+        /* 兼容旧值 */
         xl2: '1rem',
         xl3: '1.5rem',
       },

@@ -2,7 +2,7 @@
  * 设置页面
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
@@ -20,17 +20,11 @@ import {
   Languages,
   ChevronDown,
   Check,
-  ExternalLink,
-  Code2,
-  RefreshCw,
-  Sparkles,
-  Loader2,
-  Scale,
+  Monitor,
+  RotateCcw,
 } from 'lucide-react';
-import { useUpdater } from '../../hooks/useUpdater';
-import { useAppInfo } from '../../hooks/useAppInfo';
-import { Card, CardHeader, CardContent, Button, Badge, ConfirmDialog, Popover, LegalModal } from '../components';
-import { useAccounts } from '../../hooks/useEndfield';
+import { Card, CardHeader, CardContent, Button, ConfirmDialog, Popover } from '../components';
+import { useAccounts, useGachaRecordsData } from '../../hooks/useEndfield';
 import { markForceFullDownload } from '../../hooks/useSync';
 import {
   exportData,
@@ -39,9 +33,10 @@ import {
   importRecordsFromCSV,
   clearGachaRecords,
   clearWeaponRecords,
-  getGachaRecords,
-  getWeaponRecords,
+  getCloseBehavior,
+  clearCloseBehavior,
   type ExportData,
+  type CloseBehavior,
 } from '../../lib/storage';
 
 /** 支持的语言列表 */
@@ -49,23 +44,6 @@ const LANGUAGES = [
   { code: 'zh-CN', name: '简体中文', flag: '🇨🇳' },
   { code: 'en-US', name: 'English', flag: '🇺🇸' },
 ] as const;
-
-/** 开源软件许可证徽章组件 */
-function OSSBadge({ name, license, url }: { name: string; license: string; url: string }) {
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-3 hover:bg-brand/10 border border-border hover:border-brand/30 transition-all duration-200"
-      title={`${name} - ${license}`}
-    >
-      <span className="text-xs font-medium text-fg-1 group-hover:text-brand transition-colors">{name}</span>
-      <span className="text-[10px] px-1 py-0.5 rounded bg-fg-2/10 text-fg-2 font-mono">{license}</span>
-      <ExternalLink size={10} className="text-fg-2 group-hover:text-brand transition-colors opacity-0 group-hover:opacity-100" />
-    </a>
-  );
-}
 
 type MessageState = {
   type: 'success' | 'error';
@@ -76,9 +54,29 @@ type MessageState = {
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { activeUid, activeAccount, accounts } = useAccounts();
-  const { version } = useAppInfo();
+  const { gachaRecords, weaponRecords } = useGachaRecordsData(activeUid);
   const [message, setMessage] = useState<MessageState | null>(null);
   const [exporting, setExporting] = useState(false);
+  
+  // 总记录数（异步加载）
+  const [totalCharRecords, setTotalCharRecords] = useState(0);
+  const [totalWeaponRecords, setTotalWeaponRecords] = useState(0);
+  
+  // 加载总记录数
+  useEffect(() => {
+    const loadTotalRecords = async () => {
+      try {
+        const { getGachaRecords, getWeaponRecords } = await import('../../lib/storage');
+        const allChar = await getGachaRecords();
+        const allWeapon = await getWeaponRecords();
+        setTotalCharRecords(allChar.length);
+        setTotalWeaponRecords(allWeapon.length);
+      } catch (e) {
+        console.error('Failed to load total records:', e);
+      }
+    };
+    void loadTotalRecords();
+  }, [gachaRecords, weaponRecords]); // 当记录变化时重新加载
   
   // 语言选择器状态
   const [langMenuOpen, setLangMenuOpen] = useState(false);
@@ -87,26 +85,15 @@ export function SettingsPage() {
   // 清除记录确认弹窗
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   
-  // 用户协议弹窗
-  const [legalModalOpen, setLegalModalOpen] = useState(false);
-  const [legalModalTab, setLegalModalTab] = useState<'terms' | 'privacy'>('terms');
+  // 窗口关闭行为
+  const [closeBehavior, setCloseBehaviorState] = useState<CloseBehavior | null>(() => getCloseBehavior());
   
-  // 应用更新
-  const { 
-    status: updateStatus, 
-    updateInfo, 
-    progress: updateProgress, 
-    error: updateError,
-    checkForUpdate, 
-    downloadAndInstall, 
-    restartApp 
-  } = useUpdater();
-  
-  // 打开协议弹窗
-  const openLegalModal = useCallback((tab: 'terms' | 'privacy') => {
-    setLegalModalTab(tab);
-    setLegalModalOpen(true);
-  }, []);
+  // 重置关闭行为
+  const handleResetCloseBehavior = useCallback(() => {
+    clearCloseBehavior();
+    setCloseBehaviorState(null);
+    setMessage({ type: 'success', text: t('windowBehavior.resetSuccess') });
+  }, [t]);
 
   // 切换语言
   const handleLanguageChange = useCallback((langCode: string) => {
@@ -122,7 +109,7 @@ export function SettingsPage() {
     void (async () => {
       setExporting(true);
       try {
-        const data = exportData();
+        const data = await exportData();
         const fileName = `endfield-gacha-${new Date().toISOString().split('T')[0]}.endfieldgacha.json`;
         
         // 使用 Tauri 对话框选择保存位置
@@ -153,7 +140,7 @@ export function SettingsPage() {
     void (async () => {
       setExporting(true);
       try {
-        const csvContent = exportAllRecordsToCSV();
+        const csvContent = await exportAllRecordsToCSV();
         const fileName = `endfield-gacha-${new Date().toISOString().split('T')[0]}.csv`;
         
         // 使用 Tauri 对话框选择保存位置
@@ -203,7 +190,7 @@ export function SettingsPage() {
       try {
         const text = await file.text();
         const data = JSON.parse(text) as ExportData;
-        const result = importData(data);
+        const result = await importData(data);
         
         setMessage({
           type: 'success',
@@ -232,7 +219,7 @@ export function SettingsPage() {
 
       try {
         const text = await file.text();
-        const result = importRecordsFromCSV(text);
+        const result = await importRecordsFromCSV(text);
         
         if (result.errors.length > 0) {
           setMessage({
@@ -261,11 +248,9 @@ export function SettingsPage() {
     setClearDialogOpen(true);
   }, [activeUid]);
 
-  const charRecordCount = activeUid ? getGachaRecords(activeUid).length : 0;
-  const weaponRecordCount = activeUid ? getWeaponRecords(activeUid).length : 0;
+  const charRecordCount = gachaRecords.length;
+  const weaponRecordCount = weaponRecords.length;
   const recordCount = charRecordCount + weaponRecordCount;
-  const totalCharRecords = getGachaRecords().length;
-  const totalWeaponRecords = getWeaponRecords().length;
 
   return (
     <div className="space-y-4">
@@ -280,19 +265,21 @@ export function SettingsPage() {
         onCancel={() => setClearDialogOpen(false)}
         onConfirm={() => {
           if (!activeUid) return;
-          clearGachaRecords(activeUid);
-          clearWeaponRecords(activeUid);
-          // 下一次云同步对该 uid 强制全量下载，避免 since 增量过滤导致下载为 0
-          markForceFullDownload(activeUid);
-          setClearDialogOpen(false);
-          setMessage({ type: 'success', text: t('settings.clearSuccess') });
+          void (async () => {
+            await clearGachaRecords(activeUid);
+            await clearWeaponRecords(activeUid);
+            // 下一次云同步对该 uid 强制全量下载，避免 since 增量过滤导致下载为 0
+            markForceFullDownload(activeUid);
+            setClearDialogOpen(false);
+            setMessage({ type: 'success', text: t('settings.clearSuccess') });
+          })();
         }}
       />
 
       {/* 消息提示 - 修复遮挡问题 */}
       {message && (
         <div
-          className={`flex items-start gap-3 p-4 rounded-lg ${
+          className={`flex items-start gap-3 p-4 rounded-md ${
             message.type === 'success'
               ? 'bg-green-500/10 border border-green-500/30'
               : 'bg-red-500/10 border border-red-500/30'
@@ -351,15 +338,15 @@ export function SettingsPage() {
           <div className="space-y-4">
             {/* 数据概览 */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-bg-2">
+              <div className="p-4 rounded-md bg-bg-2">
                 <div className="text-2xl font-bold text-brand">{accounts.length}</div>
                 <div className="text-sm text-fg-1">{t('settings.totalAccounts')}</div>
               </div>
-              <div className="p-4 rounded-lg bg-bg-2">
+              <div className="p-4 rounded-md bg-bg-2">
                 <div className="text-2xl font-bold text-fg-0">{totalCharRecords}</div>
                 <div className="text-sm text-fg-1">{t('settings.charRecords')}</div>
               </div>
-              <div className="p-4 rounded-lg bg-bg-2">
+              <div className="p-4 rounded-md bg-bg-2">
                 <div className="text-2xl font-bold text-fg-0">{totalWeaponRecords}</div>
                 <div className="text-sm text-fg-1">{t('settings.weaponRecords')}</div>
               </div>
@@ -420,7 +407,7 @@ export function SettingsPage() {
             </div>
 
             {/* 说明 */}
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 text-sm text-blue-400">
+            <div className="flex items-start gap-2 p-3 rounded-md bg-blue-500/10 text-sm text-blue-400">
               <Info size={16} className="shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <div>{t('settings.dataInfo')}</div>
@@ -447,7 +434,7 @@ export function SettingsPage() {
         <CardContent>
           <div className="space-y-4">
             {activeAccount && (
-              <div className="flex items-center justify-between p-4 rounded-lg border border-red-500/30 bg-red-500/5">
+              <div className="flex items-center justify-between p-4 rounded-md border border-red-500/30 bg-red-500/5">
                 <div>
                   <div className="font-medium">{t('settings.clearCurrentTitle')}</div>
                   <div className="text-sm text-fg-2">
@@ -488,7 +475,7 @@ export function SettingsPage() {
         <CardContent className="overflow-visible">
           <div className="relative">
             <button
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border bg-bg-2 transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-md border bg-bg-2 transition-all duration-200 ${
                 langMenuOpen 
                   ? 'border-brand/50 bg-bg-3' 
                   : 'border-border hover:border-brand/50 hover:bg-bg-3'
@@ -539,265 +526,55 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* 关于 */}
+      {/* 窗口行为设置 */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-fg-2/20 flex items-center justify-center">
-                <Info size={20} className="text-fg-2" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">{t('settings.about')}</h2>
-                <p className="text-sm text-fg-1">{t('settings.aboutDesc')}</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+              <Monitor size={20} className="text-purple-400" />
             </div>
-            {/* 作者信息 */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20">
-              <span className="text-xs text-fg-2">{t('settings.author', '作者')}</span>
-              <span className="text-sm font-medium text-brand">@Yuki</span>
+            <div>
+              <h2 className="text-lg font-semibold">{t('windowBehavior.title')}</h2>
+              <p className="text-sm text-fg-1">{t('windowBehavior.desc')}</p>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3 text-sm">
-            {/* 版本号与检查更新 */}
-            <div className="p-4 rounded-lg bg-bg-2/80 border border-border">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-fg-2">{t('settings.version')}</span>
-                  <Badge variant="version">v{version}</Badge>
-                </div>
-                
-                {/* 检查更新按钮 */}
-                {updateStatus === 'idle' || updateStatus === 'not-available' || updateStatus === 'error' ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { void checkForUpdate(); }}
-                    className="text-brand hover:bg-brand/10"
-                    icon={<RefreshCw size={14} />}
-                  >
-                    {t('settings.checkUpdate', '检查更新')}
-                  </Button>
-                ) : updateStatus === 'checking' ? (
-                  <div className="flex items-center gap-2 text-fg-2 text-sm">
-                    <Loader2 size={14} className="animate-spin" />
-                    <span>{t('settings.checking', '检查中...')}</span>
-                  </div>
-                ) : null}
-              </div>
-              
-              {/* 更新状态显示 */}
-              {updateStatus === 'not-available' && (
-                <div className="flex items-center gap-2 text-green-400 text-sm">
-                  <CheckCircle2 size={14} />
-                  <span>{t('settings.upToDate', '已是最新版本')}</span>
-                </div>
-              )}
-              
-              {updateStatus === 'error' && updateError && (
-                <div className="flex items-center gap-2 text-red-400 text-sm">
-                  <AlertCircle size={14} />
-                  <span>{updateError}</span>
-                </div>
-              )}
-              
-              {/* 有新版本可用 */}
-              {updateStatus === 'available' && updateInfo && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-brand">
-                    <Sparkles size={14} />
-                    <span className="font-medium">
-                      {t('settings.newVersion', '发现新版本')}: v{updateInfo.version}
-                    </span>
-                  </div>
-                  {updateInfo.body && (
-                    <div className="p-3 rounded-md bg-bg-3 text-fg-2 text-xs max-h-32 overflow-y-auto">
-                      <div className="font-medium text-fg-1 mb-1">{t('settings.updateNotes', '更新说明')}:</div>
-                      <div className="whitespace-pre-wrap">{updateInfo.body}</div>
-                    </div>
-                  )}
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => { void downloadAndInstall(); }}
-                    icon={<Download size={14} />}
-                  >
-                    {t('settings.downloadUpdate', '下载更新')}
-                  </Button>
-                </div>
-              )}
-              
-              {/* 下载中 */}
-              {updateStatus === 'downloading' && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-fg-2">{t('settings.downloading', '下载中...')}</span>
-                    <span className="text-brand font-medium">{updateProgress}%</span>
-                  </div>
-                  <div className="h-2 bg-bg-3 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-brand rounded-full transition-all duration-300"
-                      style={{ width: `${updateProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {/* 准备重启 */}
-              {updateStatus === 'ready' && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-400">
-                    <CheckCircle2 size={14} />
-                    <span>{t('settings.downloadComplete', '下载完成，重启以完成更新')}</span>
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => { void restartApp(); }}
-                    icon={<RefreshCw size={14} />}
-                  >
-                    {t('settings.restartNow', '立即重启')}
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-fg-2">{t('settings.tech')}</span>
-              <span className="text-fg-1">Tauri + React + TypeScript</span>
-            </div>
-            
-            {/* 开源软件声明 */}
-            <div className="pt-3 border-t border-border">
-              <div className="flex items-center gap-2 mb-3">
-                <Code2 size={16} className="text-brand" />
-                <span className="text-sm font-medium text-fg-0">{t('settings.openSource', '开源软件声明')}</span>
-              </div>
-              <p className="text-xs text-fg-2 mb-3">
-                {t('settings.openSourceDesc', '本软件基于以下开源项目构建，特此致谢：')}
-              </p>
-              <div className="grid gap-2">
-                {/* 核心框架 */}
-                <div className="p-2.5 rounded-lg bg-bg-2/50">
-                  <div className="text-xs font-medium text-fg-1 mb-1.5">{t('settings.ossCoreFramework', '核心框架')}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <OSSBadge name="Tauri" license="MIT/Apache-2.0" url="https://tauri.app" />
-                    <OSSBadge name="React" license="MIT" url="https://react.dev" />
-                    <OSSBadge name="TypeScript" license="Apache-2.0" url="https://typescriptlang.org" />
-                  </div>
-                </div>
-                {/* UI 相关 */}
-                <div className="p-2.5 rounded-lg bg-bg-2/50">
-                  <div className="text-xs font-medium text-fg-1 mb-1.5">{t('settings.ossUILibs', 'UI 组件')}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <OSSBadge name="Tailwind CSS" license="MIT" url="https://tailwindcss.com" />
-                    <OSSBadge name="Lucide Icons" license="ISC" url="https://lucide.dev" />
-                    <OSSBadge name="React Router" license="MIT" url="https://reactrouter.com" />
-                  </div>
-                </div>
-                {/* 工具库 */}
-                <div className="p-2.5 rounded-lg bg-bg-2/50">
-                  <div className="text-xs font-medium text-fg-1 mb-1.5">{t('settings.ossUtils', '工具库')}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <OSSBadge name="i18next" license="MIT" url="https://i18next.com" />
-                    <OSSBadge name="Vite" license="MIT" url="https://vitejs.dev" />
-                    <OSSBadge name="Serde" license="MIT/Apache-2.0" url="https://serde.rs" />
-                  </div>
+          <div className="space-y-4">
+            {/* 当前设置显示 */}
+            <div className="flex items-center justify-between p-4 rounded-md bg-bg-2">
+              <div>
+                <div className="font-medium">{t('windowBehavior.closeBehavior')}</div>
+                <div className="text-sm text-fg-2 mt-0.5">
+                  {closeBehavior === 'minimize' 
+                    ? t('windowBehavior.minimizeToTray')
+                    : closeBehavior === 'exit'
+                    ? t('windowBehavior.exitApp')
+                    : t('windowBehavior.askEveryTime')
+                  }
                 </div>
               </div>
-              <p className="text-xs text-fg-2 mt-3 leading-relaxed">
-                {t('settings.ossNotice', '以上开源项目均遵循各自的开源许可证。完整依赖列表及许可证详情请查阅项目源代码。')}
-              </p>
-            </div>
-            
-            {/* 开源许可证 */}
-            <div className="pt-3 border-t border-border">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-brand/5 to-purple-500/5 border border-brand/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center">
-                    <Scale size={16} className="text-brand" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-fg-0">{t('settings.license', '开源许可')}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-brand/10 text-brand font-mono">
-                        {t('settings.licenseType', 'Apache-2.0')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-fg-2 mt-0.5">
-                      {t('settings.licenseDesc', '本项目基于 Apache License 2.0 协议开源')}
-                    </p>
-                  </div>
-                </div>
-                <a
-                  href="https://www.apache.org/licenses/LICENSE-2.0"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-brand hover:text-brand-hover hover:bg-brand/10 transition-all duration-200"
+              {closeBehavior && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetCloseBehavior}
+                  icon={<RotateCcw size={16} />}
+                  className="text-fg-1 hover:text-fg-0 hover:bg-bg-3"
                 >
-                  {t('settings.viewLicense', '查看许可证')}
-                  <ExternalLink size={12} />
-                </a>
-              </div>
+                  {t('windowBehavior.reset')}
+                </Button>
+              )}
             </div>
             
-            <div className="pt-3 border-t border-border text-fg-2">
-              {t('settings.disclaimer')}
-            </div>
-            {/* 用户协议与隐私政策链接 */}
-            <div className="pt-3 border-t border-border flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => openLegalModal('terms')}
-                className="text-brand hover:text-brand-hover transition-colors text-sm"
-              >
-                {t('legal.termsLink', '《用户协议》')}
-              </button>
-              <span className="text-fg-2">|</span>
-              <button
-                type="button"
-                onClick={() => openLegalModal('privacy')}
-                className="text-brand hover:text-brand-hover transition-colors text-sm"
-              >
-                {t('legal.privacyLink', '《隐私政策》')}
-              </button>
-            </div>
-            
-            {/* 打赏作者 */}
-            <div className="pt-4 border-t border-border">
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">☕</span>
-                  <span className="text-sm font-medium text-fg-0">{t('settings.supportAuthor', '打赏作者')}</span>
-                </div>
-                <p className="text-xs text-fg-2 text-center">
-                  {t('settings.supportAuthorDesc', '如果这个工具对你有帮助，可以请作者喝杯咖啡~')}
-                </p>
-                <div className="relative group">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-brand/20 via-purple-500/20 to-brand/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative p-2 bg-white rounded-lg shadow-lg border border-border/50 group-hover:border-brand/30 transition-colors">
-                    <img
-                      src="/3dc7266d7c084465e28021865519ab53.png"
-                      alt={t('settings.supportAuthor', '打赏作者')}
-                      className="w-36 h-36 object-contain"
-                    />
-                  </div>
-                </div>
-                <span className="text-[10px] text-fg-2/60">{t('settings.scanToSupport', '微信扫码打赏')}</span>
-              </div>
+            {/* 说明 */}
+            <div className="flex items-start gap-2 p-3 rounded-md bg-purple-500/10 text-sm text-purple-400">
+              <Info size={16} className="shrink-0 mt-0.5" />
+              <span>{t('windowBehavior.closeBehaviorDesc')}</span>
             </div>
           </div>
         </CardContent>
       </Card>
-      
-      {/* 用户协议与隐私政策弹窗 */}
-      <LegalModal
-        open={legalModalOpen}
-        onOpenChange={setLegalModalOpen}
-        initialTab={legalModalTab}
-      />
     </div>
   );
 }

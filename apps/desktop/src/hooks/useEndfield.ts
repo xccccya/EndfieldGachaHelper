@@ -2,7 +2,7 @@
  * Endfield API React Hooks
  */
 
-import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { 
   BindingAccount, 
   EndFieldCharPoolType, 
@@ -35,6 +35,8 @@ import {
   notifyStorageChange,
   STORAGE_CHANGE_EVENT,
   type StoredAccount,
+  type GachaRecord,
+  type WeaponRecord,
 } from '../lib/storage';
 
 export type SyncProgress = {
@@ -91,9 +93,9 @@ export function useAuth() {
       setEndfieldApp(endfield);
       setBindings(endfield.bindingList);
 
-      // 4. 保存所有账号到本地
+      // 4. 保存所有账号到本地（异步）
       for (const binding of endfield.bindingList) {
-        addAccountsFromBinding(binding);
+        await addAccountsFromBinding(binding);
       }
 
       // 5. 设置默认选中的账号
@@ -164,8 +166,8 @@ function getCharPoolTypeFromPoolId(poolId: string): EndFieldCharPoolType | null 
 /**
  * 构建已存在角色记录的 seqId 集合（按卡池类型分组）
  */
-function buildExistingCharSeqIdsByPool(uid: string): Partial<Record<EndFieldCharPoolType, Set<string>>> {
-  const records = getGachaRecords(uid);
+async function buildExistingCharSeqIdsByPool(uid: string): Promise<Partial<Record<EndFieldCharPoolType, Set<string>>>> {
+  const records = await getGachaRecords(uid);
   const result: Partial<Record<EndFieldCharPoolType, Set<string>>> = {};
   
   for (const record of records) {
@@ -183,8 +185,8 @@ function buildExistingCharSeqIdsByPool(uid: string): Partial<Record<EndFieldChar
  * 构建已存在武器记录的 seqId 集合
  * 武器池不区分类型，返回所有已存在的 seqId
  */
-function buildExistingWeaponSeqIds(uid: string): Set<string> {
-  const records = getWeaponRecords(uid);
+async function buildExistingWeaponSeqIds(uid: string): Promise<Set<string>> {
+  const records = await getWeaponRecords(uid);
   const result = new Set<string>();
   
   for (const record of records) {
@@ -228,7 +230,8 @@ export function useGachaSync() {
     let weaponAdded = 0;
 
     try {
-      const account = getAccounts().find((a) => a.uid === uid) ?? null;
+      const accounts = await getAccounts();
+      const account = accounts.find((a) => a.uid === uid) ?? null;
       const hgUid = account ? getAccountHgUid(account) : null;
       if (!hgUid) {
         setProgress({ status: 'error', error: '该账号缺少 hgUid 信息，请重新绑定 Token 以补全账号' });
@@ -240,8 +243,8 @@ export function useGachaSync() {
       const u8Token = await fetchU8TokenByUid(hgUid, appToken, defaultOptions);
 
       // 2. 构建已存在记录的 seqId 集合（用于增量同步）
-      const existingCharSeqIdsByPool = buildExistingCharSeqIdsByPool(uid);
-      const existingWeaponSeqIds = buildExistingWeaponSeqIds(uid);
+      const existingCharSeqIdsByPool = await buildExistingCharSeqIdsByPool(uid);
+      const existingWeaponSeqIds = await buildExistingWeaponSeqIds(uid);
       
       // 3. 拉取所有卡池记录（角色 + 武器）
       setProgress({
@@ -290,7 +293,7 @@ export function useGachaSync() {
       for (const poolType of END_FIELD_CHAR_POOL_TYPES) {
         const records = allRecords.character[poolType];
         if (records && records.length > 0) {
-          const added = addGachaRecords(uid, records);
+          const added = await addGachaRecords(uid, records);
           charAdded += added;
         }
       }
@@ -298,7 +301,7 @@ export function useGachaSync() {
       // 5. 保存武器记录（武器池只有一个类型）
       const weaponRecords = allRecords.weapon['E_WeaponGachaPoolType_All'];
       if (weaponRecords && weaponRecords.length > 0) {
-        const added = addWeaponRecords(uid, weaponRecords);
+        const added = await addWeaponRecords(uid, weaponRecords);
         weaponAdded += added;
       }
 
@@ -340,28 +343,24 @@ export function useGachaSync() {
 
 /**
  * 账号列表 Hook
+ * 使用事件订阅 + version 触发重新加载
  */
 export function useAccounts() {
-  /**
-   * useSyncExternalStore 要求 getSnapshot 在 store 未变化时返回“稳定值”，
-   * 否则会导致 React 认为 snapshot 一直变化从而陷入无限重渲染。
-   *
-   * 这里直接用 localStorage 的原始字符串拼成 snapshot（primitive），
-   * 同值时 Object.is 会判定相等，不会触发循环。
-   */
-  const SNAPSHOT_DELIM = '\u0000';
-  const getSnapshot = useCallback((): string => {
-    if (typeof window === 'undefined') return `${SNAPSHOT_DELIM}[]`;
-    const accountsRaw = localStorage.getItem('efgh.accounts') ?? '[]';
-    const activeUidRaw = localStorage.getItem('efgh.activeUid') ?? '';
-    return `${activeUidRaw}${SNAPSHOT_DELIM}${accountsRaw}`;
-  }, []);
+  const [accounts, setAccounts] = useState<StoredAccount[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const subscribe = useCallback((onStoreChange: () => void) => {
-    if (typeof window === 'undefined') return () => {};
-    const handler = () => onStoreChange();
+  // 使用递增版本号触发刷新，避免 Date.now() 导致的重复渲染
+  const [version, setVersion] = useState(0);
+
+  // 订阅存储变更（同窗口自定义事件 + 跨窗口 storage 事件）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handler = () => {
+      setVersion((v) => v + 1);
+    };
+
     window.addEventListener(STORAGE_CHANGE_EVENT, handler);
-    // 兼容跨窗口/多实例同步（同窗口内 localStorage.setItem 不会触发该事件）
     window.addEventListener('storage', handler);
     return () => {
       window.removeEventListener(STORAGE_CHANGE_EVENT, handler);
@@ -369,24 +368,36 @@ export function useAccounts() {
     };
   }, []);
 
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const activeUid =
+    typeof window === 'undefined'
+      ? null
+      : ((localStorage.getItem('efgh.activeUid') ?? '') || null);
 
-  const { activeUid, accountsRaw } = useMemo(() => {
-    const idx = snapshot.indexOf(SNAPSHOT_DELIM);
-    if (idx < 0) return { activeUid: null as string | null, accountsRaw: '[]' };
-    const uid = snapshot.slice(0, idx);
-    const raw = snapshot.slice(idx + SNAPSHOT_DELIM.length) || '[]';
-    return { activeUid: uid || null, accountsRaw: raw };
-  }, [snapshot]);
+  // 异步加载账号列表
+  useEffect(() => {
+    let mounted = true;
+    
+    const loadAccounts = async () => {
+      try {
+        const data = await getAccounts();
+        if (mounted) {
+          setAccounts(data);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('[useAccounts] Failed to load accounts:', e);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-  const accounts: StoredAccount[] = useMemo(() => {
-    try {
-      const parsed: unknown = JSON.parse(accountsRaw);
-      return Array.isArray(parsed) ? (parsed as StoredAccount[]) : [];
-    } catch {
-      return [];
-    }
-  }, [accountsRaw]);
+    void loadAccounts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [version]); // 当存储变化时重新加载
 
   const refresh = useCallback(() => {
     // 主动触发一次通知，让所有订阅者重新从存储读取
@@ -405,5 +416,77 @@ export function useAccounts() {
     activeAccount,
     selectAccount,
     refresh,
+    loading,
+  };
+}
+
+/**
+ * 抽卡记录数据 Hook
+ * 异步加载指定账号的记录
+ */
+export function useGachaRecordsData(uid: string | null) {
+  const [gachaRecords, setGachaRecords] = useState<GachaRecord[]>([]);
+  const [weaponRecords, setWeaponRecords] = useState<WeaponRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  // 使用递增版本号来触发重新加载，而不是 Date.now()
+  const [version, setVersion] = useState(0);
+
+  // 订阅存储变更
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handler = () => {
+      setVersion((v) => v + 1);
+    };
+    
+    window.addEventListener(STORAGE_CHANGE_EVENT, handler);
+    return () => window.removeEventListener(STORAGE_CHANGE_EVENT, handler);
+  }, []);
+
+  // 异步加载记录
+  useEffect(() => {
+    let mounted = true;
+
+    const loadRecords = async () => {
+      if (!uid) {
+        if (mounted) {
+          setGachaRecords([]);
+          setWeaponRecords([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const [gacha, weapon] = await Promise.all([
+          getGachaRecords(uid),
+          getWeaponRecords(uid),
+        ]);
+        
+        if (mounted) {
+          setGachaRecords(gacha);
+          setWeaponRecords(weapon);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('[useGachaRecordsData] Failed to load records:', e);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    setLoading(true);
+    void loadRecords();
+
+    return () => {
+      mounted = false;
+    };
+  }, [uid, version]);
+
+  return {
+    gachaRecords,
+    weaponRecords,
+    loading,
   };
 }

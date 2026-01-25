@@ -15,6 +15,14 @@
     "core:window:allow-is-maximized",
     "core:window:allow-is-minimized",
     "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-destroy",
+    "core:event:default",
+    "core:event:allow-emit",
+    "core:event:allow-listen",
+    "core:tray:default",
+    "core:menu:default",
     "http:default",
     {
       "identifier": "http:allow-fetch",
@@ -96,7 +104,8 @@
     "sql:allow-close",
     "updater:default",
     "process:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "core:webview:allow-create-webview-window"
   ]
 }
 

@@ -188,7 +188,7 @@ export function Popover({
       style={style}
       className={`
         z-[9999]
-        rounded-xl border border-border bg-bg-1/95 shadow-xl backdrop-blur-md
+        rounded-lg border border-border bg-bg-1/95 shadow-lg backdrop-blur-md
         overflow-hidden
         transition-all duration-150
         ${open ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.98] translate-y-1 pointer-events-none'}
