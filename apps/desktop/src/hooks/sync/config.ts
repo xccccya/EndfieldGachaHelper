@@ -176,10 +176,21 @@ export function getSyncStatus(config: SyncConfig): SyncStatus {
  */
 export async function ensureLocalAccountExists(uid: string, region: string): Promise<string> {
   const existingAccounts = await getAccounts();
-  // 新版云同步：uid=roleId, region=serverId
+  // 新版云同步：uid=roleId, region=serverId（扩展：国际服 region=gryphline@serverId）
   // 旧版兼容：uid=hgUid, region='default'
+  const parseCloudRegion = (raw: string): { provider: 'hypergryph' | 'gryphline'; serverId: string } => {
+    if (raw && raw !== 'default' && raw.startsWith('gryphline@')) {
+      return { provider: 'gryphline', serverId: raw.slice('gryphline@'.length) || '1' };
+    }
+    return { provider: 'hypergryph', serverId: raw };
+  };
+
+  const { provider, serverId } = region && region !== 'default'
+    ? parseCloudRegion(region)
+    : { provider: 'hypergryph' as const, serverId: 'default' };
+
   const localUid =
-    region && region !== 'default' ? makeAccountKey(region, uid) : uid;
+    region && region !== 'default' ? makeAccountKey(serverId, uid, provider) : uid;
   const accountExists = existingAccounts.some((a) => a.uid === localUid);
   
   if (accountExists) {
@@ -189,9 +200,13 @@ export async function ensureLocalAccountExists(uid: string, region: string): Pro
   // 创建最小化的账号记录
   const newAccount: StoredAccount = {
     uid: localUid,
-    channelName: region === 'default' ? '云同步恢复' : `云同步恢复 · ${region}`,
+    provider,
+    channelName:
+      region === 'default'
+        ? '云同步恢复'
+        : `云同步恢复 · ${provider === 'gryphline' ? 'Gryphline' : '鹰角网络'} · ${serverId}`,
     ...(region === 'default' ? { hgUid: uid } : {}),
-    ...(region === 'default' ? {} : { roleId: uid, serverId: region }),
+    ...(region === 'default' ? {} : { roleId: uid, serverId }),
     roles: [], // 云端没有角色详情，需要用户重新通过 Token 获取
     addedAt: Date.now(),
   };

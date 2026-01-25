@@ -5,30 +5,100 @@
 
 import { STORAGE_KEYS } from './constants';
 import { notifyStorageChange } from './events';
+import type { AccountProvider } from './types';
 
 // ============== Token 管理 ==============
 
+function tokenKeyByProvider(provider: AccountProvider): string {
+  return `${STORAGE_KEYS.TOKEN_BY_PROVIDER_PREFIX}${provider}`;
+}
+
 /**
  * 保存登录 Token
+ * @deprecated 请使用 saveAppToken(provider, token)
  */
 export function saveToken(token: string): void {
-  localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-  notifyStorageChange({ keys: [STORAGE_KEYS.TOKEN], reason: 'saveToken' });
+  // 兼容旧逻辑：默认视为 hypergryph
+  saveAppToken('hypergryph', token);
 }
 
 /**
  * 获取登录 Token
+ * @deprecated 请使用 getAppToken(provider)
  */
 export function getToken(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.TOKEN);
+  return getAppToken('hypergryph');
 }
 
 /**
  * 清除登录 Token
+ * @deprecated 请使用 clearAppToken(provider?)
  */
 export function clearToken(): void {
-  localStorage.removeItem(STORAGE_KEYS.TOKEN);
-  notifyStorageChange({ keys: [STORAGE_KEYS.TOKEN], reason: 'clearToken' });
+  clearAppToken();
+}
+
+/**
+ * 保存登录 Token（按平台）
+ */
+export function saveAppToken(provider: AccountProvider, token: string): void {
+  // 新键：按平台分别保存
+  localStorage.setItem(tokenKeyByProvider(provider), token);
+  // 兼容旧键：如果是 hypergryph，同时写入老 key，避免旧版本读不到
+  if (provider === 'hypergryph') {
+    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+  }
+  notifyStorageChange({
+    keys: [tokenKeyByProvider(provider), ...(provider === 'hypergryph' ? [STORAGE_KEYS.TOKEN] : [])],
+    reason: 'saveAppToken',
+  });
+}
+
+/**
+ * 获取登录 Token（按平台）
+ */
+export function getAppToken(provider: AccountProvider): string | null {
+  const v = localStorage.getItem(tokenKeyByProvider(provider));
+  if (v) return v;
+  // 兼容：老版本只存了 efgh.token（视为 hypergryph）
+  if (provider === 'hypergryph') return localStorage.getItem(STORAGE_KEYS.TOKEN);
+  return null;
+}
+
+/**
+ * 清除登录 Token（按平台）
+ * - 不传 provider：清除所有平台 token
+ */
+export function clearAppToken(provider?: AccountProvider): void {
+  if (!provider) {
+    localStorage.removeItem(tokenKeyByProvider('hypergryph'));
+    localStorage.removeItem(tokenKeyByProvider('gryphline'));
+    localStorage.removeItem(STORAGE_KEYS.TOKEN); // 旧键
+    notifyStorageChange({
+      keys: [tokenKeyByProvider('hypergryph'), tokenKeyByProvider('gryphline'), STORAGE_KEYS.TOKEN],
+      reason: 'clearAppToken',
+    });
+    return;
+  }
+
+  localStorage.removeItem(tokenKeyByProvider(provider));
+  if (provider === 'hypergryph') localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  notifyStorageChange({
+    keys: [tokenKeyByProvider(provider), ...(provider === 'hypergryph' ? [STORAGE_KEYS.TOKEN] : [])],
+    reason: 'clearAppToken',
+  });
+}
+
+// ============== 账号平台偏好 ==============
+
+export function getAccountProviderPreference(): AccountProvider {
+  const v = localStorage.getItem(STORAGE_KEYS.ACCOUNT_PROVIDER);
+  return v === 'gryphline' ? 'gryphline' : 'hypergryph';
+}
+
+export function setAccountProviderPreference(provider: AccountProvider): void {
+  localStorage.setItem(STORAGE_KEYS.ACCOUNT_PROVIDER, provider);
+  notifyStorageChange({ keys: [STORAGE_KEYS.ACCOUNT_PROVIDER], reason: 'setAccountProviderPreference' });
 }
 
 // ============== 当前账号 UID 管理 ==============

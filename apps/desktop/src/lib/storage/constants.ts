@@ -6,6 +6,10 @@
 export const STORAGE_KEYS = {
   /** 登录 Token（保留在 localStorage） */
   TOKEN: 'efgh.token',
+  /** 登录 Token（按平台分别存储） */
+  TOKEN_BY_PROVIDER_PREFIX: 'efgh.token.',
+  /** 账号平台偏好（用于账号页切换默认值） */
+  ACCOUNT_PROVIDER: 'efgh.accountProvider',
   /** 当前选中账号（保留在 localStorage） */
   ACTIVE_UID: 'efgh.activeUid',
   /** 侧边栏是否折叠（保留在 localStorage） */

@@ -26,11 +26,24 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Input, ConfirmDialog, Modal } from '../components';
 import { useAuth, useAccounts } from '../../hooks/useEndfield';
-import { removeAccount, parseAccountKey } from '../../lib/storage';
+import { removeAccount, parseAccountKey, getAccountProviderPreference, setAccountProviderPreference } from '../../lib/storage';
 
-// Token 获取相关 URL
-const HG_WEBSITE_URL = 'https://user.hypergryph.com/';
-const TOKEN_API_URL = 'https://web-api.hypergryph.com/account/info/hg';
+type AccountProvider = 'hypergryph' | 'gryphline';
+
+function providerMeta(provider: AccountProvider) {
+  if (provider === 'gryphline') {
+    return {
+      websiteUrl: 'https://user.gryphline.com/',
+      websiteHost: 'user.gryphline.com',
+      tokenApiUrl: 'https://web-api.gryphline.com/cookie_store/account_token',
+    };
+  }
+  return {
+    websiteUrl: 'https://user.hypergryph.com/',
+    websiteHost: 'user.hypergryph.com',
+    tokenApiUrl: 'https://web-api.hypergryph.com/account/info/hg',
+  };
+}
 
 // 使用 Tauri opener 打开外部链接
 const openExternal = async (url: string) => {
@@ -46,10 +59,13 @@ const openExternal = async (url: string) => {
 export function AccountPage() {
   const { t } = useTranslation();
   const [token, setToken] = useState('');
+  const [provider, setProvider] = useState<AccountProvider>(() => getAccountProviderPreference());
   const [showSuccess, setShowSuccess] = useState(false);
   const { loading, error, authenticate, clearError } = useAuth();
   const { accounts, activeUid, selectAccount, refresh } = useAccounts();
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
+  const providerName =
+    provider === 'gryphline' ? t('account.providerNameGryphline') : t('account.providerNameHypergryph');
 
   // Token 获取提示卡
   const [tokenHelpOpen, setTokenHelpOpen] = useState(false);
@@ -60,7 +76,7 @@ export function AccountPage() {
 
     void (async () => {
       try {
-        await authenticate(token.trim());
+        await authenticate(token.trim(), provider);
         setToken('');
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
@@ -69,7 +85,79 @@ export function AccountPage() {
         // Error handled by useAuth
       }
     })();
-  }, [token, authenticate, refresh]);
+  }, [token, provider, authenticate, refresh]);
+
+  const toggleProvider = useCallback(() => {
+    const next: AccountProvider = provider === 'hypergryph' ? 'gryphline' : 'hypergryph';
+    setProvider(next);
+    setAccountProviderPreference(next);
+  }, [provider]);
+
+  const ProviderSwitch = useCallback((props: { className?: string }) => {
+    const className = props.className ?? '';
+    const isGryphline = provider === 'gryphline';
+    return (
+      <button
+        type="button"
+        onClick={toggleProvider}
+        aria-pressed={isGryphline}
+        className={`
+          group inline-flex items-center gap-2
+          rounded-full
+          px-2.5 py-1.5
+          bg-bg-3/85 hover:bg-bg-3
+          dark:bg-bg-2/70 dark:hover:bg-bg-2/95
+          backdrop-blur-sm
+          shadow-md
+          shadow-black/5 dark:shadow-black/30
+          transition-all duration-200
+          hover:shadow-lg
+          focus:outline-none focus:ring-2 focus:ring-brand/35 dark:focus:ring-brand/45
+          active:scale-[0.985]
+          ${className}
+        `}
+      >
+        <span
+          className={`
+            text-xs font-semibold whitespace-nowrap select-none
+            ${isGryphline ? 'text-sky-400 dark:text-sky-300' : 'text-brand'}
+          `}
+        >
+          {t('account.useProvider', { providerName })}
+        </span>
+        <span
+          className={`
+            relative inline-flex h-5 w-9 items-center rounded-full
+            shadow-inner
+            transition-colors duration-250 ease-out
+            ${isGryphline
+              ? 'bg-sky-500/25 dark:bg-sky-400/20'
+              : 'bg-brand/28 dark:bg-brand/22'}
+          `}
+        >
+          {/* 轻微高光层（随 hover 更明显） */}
+          <span
+            className={`
+              pointer-events-none absolute inset-0 rounded-full
+              bg-gradient-to-b from-white/20 to-transparent
+              opacity-70 group-hover:opacity-95
+              transition-opacity duration-200
+            `}
+          />
+          <span
+            className={`
+              absolute left-0.5 top-0.5 h-4 w-4 rounded-full shadow
+              transition-all duration-250 ease-out
+              group-active:scale-95
+              ${isGryphline
+                ? 'translate-x-4 bg-sky-400 dark:bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.28)]'
+                : 'translate-x-0 bg-brand shadow-[0_0_10px_rgba(255,250,0,0.25)]'}
+            `}
+          />
+        </span>
+      </button>
+    );
+  }, [provider, providerName, t, toggleProvider]);
 
   const handleRemoveAccount = useCallback((uid: string) => {
     setDeleteUid(uid);
@@ -121,7 +209,9 @@ export function AccountPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold">{t('account.addTitle')}</h2>
-              <p className="text-sm text-fg-1 mt-0.5">{t('account.addDesc')}</p>
+              <p className="text-sm text-fg-1 mt-0.5">
+                {t('account.addDesc', { providerName })}
+              </p>
             </div>
           </div>
         </CardHeader>
@@ -131,7 +221,10 @@ export function AccountPage() {
             <div className="space-y-3">
               <Input
                 label={t('account.tokenLabel')}
-                placeholder={t('account.tokenPlaceholder')}
+                labelRight={(
+                  <ProviderSwitch />
+                )}
+                placeholder={t('account.tokenPlaceholder', { providerName })}
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -162,7 +255,7 @@ export function AccountPage() {
                   disabled={!token.trim()}
                   icon={<LogIn size={20} />}
                 >
-                  {loading ? '验证中...' : t('account.addButton')}
+                  {loading ? t('account.verifying') : t('account.addButton')}
                 </Button>
                 <Button
                   variant="secondary"
@@ -194,24 +287,29 @@ export function AccountPage() {
               <Info size={18} className="text-brand" />
               {t('account.howToGetToken')}
             </div>
-            <button
-              type="button"
-              onClick={() => setTokenHelpOpen(false)}
-              className="
-                group
-                inline-flex items-center justify-center
-                w-9 h-9 rounded-md
-                text-fg-2 hover:text-fg-0 hover:bg-bg-3
-                transition-all duration-150
-                active:scale-95
-              "
-              aria-label={t('common.dismiss')}
-            >
-              <X
-                size={18}
-                className="transition-transform duration-200 group-hover:rotate-90"
-              />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* 平台切换（教程内也可切换） */}
+              <ProviderSwitch className="px-3" />
+
+              <button
+                type="button"
+                onClick={() => setTokenHelpOpen(false)}
+                className="
+                  group
+                  inline-flex items-center justify-center
+                  w-9 h-9 rounded-md
+                  text-fg-2 hover:text-fg-0 hover:bg-bg-3
+                  transition-all duration-150
+                  active:scale-95
+                "
+                aria-label={t('common.dismiss')}
+              >
+                <X
+                  size={18}
+                  className="transition-transform duration-200 group-hover:rotate-90"
+                />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-5">
@@ -225,9 +323,11 @@ export function AccountPage() {
                   <div className="w-0.5 h-full bg-border mt-2" />
                 </div>
                 <div className="flex-1 pb-4">
-                  <div className="text-fg-0 font-medium mb-1.5">登录鹰角网络</div>
+                  <div className="text-fg-0 font-medium mb-1.5">
+                    {t('account.step1Title', { providerName })}
+                  </div>
                   <div className="text-sm text-fg-1 leading-relaxed">
-                    {t('account.step1')}
+                    {t('account.step1', { websiteHost: providerMeta(provider).websiteHost })}
                   </div>
                 </div>
               </div>
@@ -240,7 +340,7 @@ export function AccountPage() {
                   <div className="w-0.5 h-full bg-border mt-2" />
                 </div>
                 <div className="flex-1 pb-4">
-                  <div className="text-fg-0 font-medium mb-1.5">访问接口获取 Token</div>
+                  <div className="text-fg-0 font-medium mb-1.5">{t('account.step2Title')}</div>
                   <div className="text-sm text-fg-1 leading-relaxed">
                     {t('account.step2')}
                   </div>
@@ -254,7 +354,7 @@ export function AccountPage() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <div className="text-fg-0 font-medium mb-1.5">复制 Token</div>
+                  <div className="text-fg-0 font-medium mb-1.5">{t('account.step3Title')}</div>
                   <div className="text-sm text-fg-1 leading-relaxed">
                     {t('account.step3')}
                   </div>
@@ -262,7 +362,7 @@ export function AccountPage() {
                     <span className="text-fg-2/60">{'{'}</span>
                     <span className="text-blue-400">"content"</span>
                     <span className="text-fg-2/60">: </span>
-                    <span className="text-green-400">"你的Token在这里..."</span>
+                    <span className="text-green-400">"{t('account.tokenExample')}"</span>
                     <span className="text-fg-2/60">{'}'}</span>
                   </div>
                 </div>
@@ -273,21 +373,23 @@ export function AccountPage() {
             <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
               <button
                 type="button"
-                onClick={() => { void openExternal(HG_WEBSITE_URL); }}
+                onClick={() => { void openExternal(providerMeta(provider).websiteUrl); }}
                 className="group flex-1 min-w-[180px] flex items-center gap-3 px-4 py-3.5 rounded-md bg-bg-1 border border-border text-fg-1 hover:border-brand/50 hover:bg-bg-2 transition-all cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-md bg-fg-2/10 flex items-center justify-center group-hover:bg-brand/20 transition-colors">
                   <Globe size={20} className="text-fg-2 group-hover:text-brand transition-colors" />
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="font-medium text-sm">{t('account.openHgWebsite')}</div>
-                  <div className="text-xs text-fg-2 mt-0.5">user.hypergryph.com</div>
+                  <div className="font-medium text-sm">
+                    {provider === 'gryphline' ? t('account.openGryphlineWebsite') : t('account.openHgWebsite')}
+                  </div>
+                  <div className="text-xs text-fg-2 mt-0.5">{providerMeta(provider).websiteHost}</div>
                 </div>
                 <ExternalLink size={16} className="text-fg-2/50 group-hover:text-brand transition-colors" />
               </button>
               <button
                 type="button"
-                onClick={() => { void openExternal(TOKEN_API_URL); }}
+                onClick={() => { void openExternal(providerMeta(provider).tokenApiUrl); }}
                 className="group flex-1 min-w-[180px] flex items-center gap-3 px-4 py-3.5 rounded-md bg-brand/10 border border-brand/30 text-brand hover:bg-brand/20 hover:border-brand/50 transition-all cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-md bg-brand/20 flex items-center justify-center group-hover:bg-brand/30 transition-colors">
@@ -295,7 +397,7 @@ export function AccountPage() {
                 </div>
                 <div className="flex-1 text-left">
                   <div className="font-medium text-sm">{t('account.openTokenApi')}</div>
-                  <div className="text-xs text-brand/70 mt-0.5">获取 Token 数据</div>
+                  <div className="text-xs text-brand/70 mt-0.5">{providerMeta(provider).tokenApiUrl}</div>
                 </div>
                 <ArrowRight size={16} className="text-brand/50 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
               </button>
@@ -305,7 +407,7 @@ export function AccountPage() {
             <div className="flex items-start gap-3 p-3.5 rounded-md bg-green-500/5 border border-green-500/20">
               <Shield size={18} className="text-green-500 shrink-0 mt-0.5" />
               <div className="text-xs text-green-400/90 leading-relaxed">
-                <span className="font-medium">安全说明：</span>
+                <span className="font-medium">{t('account.securityNotePrefix')}</span>
                 {t('account.tokenHint')}
               </div>
             </div>
@@ -339,7 +441,7 @@ export function AccountPage() {
               <div className="w-20 h-20 mx-auto mb-4 rounded-lg bg-fg-2/5 flex items-center justify-center">
                 <User size={40} className="opacity-30" />
               </div>
-              <p className="text-lg font-medium text-fg-1 mb-1">暂无账号</p>
+              <p className="text-lg font-medium text-fg-1 mb-1">{t('account.emptyTitle')}</p>
               <p className="text-sm">{t('account.noAccounts')}</p>
             </div>
           ) : (
@@ -372,7 +474,7 @@ export function AccountPage() {
                     <div className="flex items-center gap-2.5">
                       <span className="font-semibold text-lg truncate">
                         {account.roles[0]?.nickName ||
-                          `UID: ${account.roles[0]?.roleId || parseAccountKey(account.uid)?.roleId || account.uid}`}
+                          `${t('account.uidPrefix')}${account.roles[0]?.roleId || parseAccountKey(account.uid)?.roleId || account.uid}`}
                       </span>
                       {activeUid === account.uid && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/20 text-xs text-brand font-medium">
@@ -388,12 +490,12 @@ export function AccountPage() {
                       </span>
                       <span className="text-fg-2/60">•</span>
                       <span className="font-mono text-xs bg-fg-2/10 px-2 py-0.5 rounded">
-                        UID: {account.roles[0]?.roleId || parseAccountKey(account.uid)?.roleId || account.uid}
+                        {t('account.uidPrefix')}{account.roles[0]?.roleId || parseAccountKey(account.uid)?.roleId || account.uid}
                       </span>
                       {account.roles[0]?.level && (
                         <>
                           <span className="text-fg-2/60">•</span>
-                          <span>Lv.{account.roles[0].level}</span>
+                          <span>{t('account.levelPrefix')}{account.roles[0].level}</span>
                         </>
                       )}
                     </div>
@@ -406,7 +508,7 @@ export function AccountPage() {
                       handleRemoveAccount(account.uid);
                     }}
                     className="p-2.5 rounded-md text-fg-2/50 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
-                    title="删除账号"
+                    title={t('account.deleteAccountTitle')}
                   >
                     <Trash2 size={18} />
                   </button>

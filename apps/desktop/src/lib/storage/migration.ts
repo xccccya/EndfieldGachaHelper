@@ -123,6 +123,7 @@ export async function migrateFromLocalStorage(): Promise<{
         await dbSaveAccount({
           uid: acc.uid,
           hg_uid: hgUid,
+          provider: 'hypergryph',
           channel_name: acc.channelName,
           roles: JSON.stringify(acc.roles ?? []),
           added_at: acc.addedAt ?? Date.now(),
@@ -321,8 +322,8 @@ export async function migrateAccountKeyFormat(): Promise<void> {
     if (acc) {
       const hgUidToSave = acc.hgUid ?? oldHgUid;
       await database.execute(
-        `INSERT OR REPLACE INTO accounts (uid, hg_uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4, $5)`,
-        [newUid, hgUidToSave, acc.channelName, JSON.stringify(acc.roles ?? []), acc.addedAt],
+        `INSERT OR REPLACE INTO accounts (uid, hg_uid, provider, channel_name, roles, added_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [newUid, hgUidToSave, acc.provider ?? 'hypergryph', acc.channelName, JSON.stringify(acc.roles ?? []), acc.addedAt],
       );
     }
     await database.execute(`DELETE FROM accounts WHERE uid = $1`, [oldHgUid]);

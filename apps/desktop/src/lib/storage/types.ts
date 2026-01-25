@@ -12,16 +12,28 @@ import type {
 // ============== 账号类型 ==============
 
 /**
+ * 账号平台（国服：鹰角 Hypergryph；国际服：Gryphline）
+ *
+ * 注意：两者后续链路一致，仅 API 域名不同（hypergryph.com <-> gryphline.com）。
+ */
+export type AccountProvider = 'hypergryph' | 'gryphline';
+
+/**
  * 本地存储的账号信息
  */
 export type StoredAccount = {
   /**
    * 本地账号主键：
-   * 使用 accountKey = `${serverId}:${roleId}`，确保多服/多角色不冲突，且不受 hgUid 变动影响。
+   * 使用 accountKey 确保多服/多角色不冲突，且不受 hgUid 变动影响。
+   *
+   * - 国服（hypergryph）：`${serverId}:${roleId}`
+   * - 国际服（gryphline）：`gryphline@${serverId}:${roleId}`（避免与国服 roleKey 冲突）
    */
   uid: string;
   /** 鹰角内部 uid：用于官方接口换取 u8_token（云端恢复时可能为空，需要重新绑定补全） */
   hgUid?: string;
+  /** 账号平台：决定后续请求使用的官方域名 */
+  provider?: AccountProvider;
   /** 玩家可见 UID（即 roleId）。云端恢复/展示时优先使用。 */
   roleId?: string;
   /** 区服 ID（即 serverId）。云端恢复/展示/云同步时优先使用。 */

@@ -10,19 +10,24 @@ import { forwardRef } from 'react';
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: string | undefined;
+  /** label 右侧附加内容（如切换按钮/提示链接） */
+  labelRight?: ReactNode | undefined;
   error?: string | undefined;
   hint?: string | undefined;
   icon?: ReactNode | undefined;
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, icon, className = '', ...props }, ref) => {
+  ({ label, labelRight, error, hint, icon, className = '', ...props }, ref) => {
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-fg-1 mb-1.5">
-            {label}
-          </label>
+          <div className="flex items-center justify-between gap-3 mb-1.5">
+            <label className="block text-sm font-medium text-fg-1">
+              {label}
+            </label>
+            {labelRight ? <div className="shrink-0">{labelRight}</div> : null}
+          </div>
         )}
         <div className="relative">
           {icon && (

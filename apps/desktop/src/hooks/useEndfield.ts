@@ -22,8 +22,10 @@ import {
 } from '../features/endfield/endfieldApi';
 import { tauriFetcher } from '../lib/tauriHttp';
 import {
-  saveToken,
-  getToken,
+  saveAppToken,
+  getAppToken,
+  getAccountProviderPreference,
+  setAccountProviderPreference,
   addAccountsFromBinding,
   makeAccountKey,
   getAccounts,
@@ -69,17 +71,21 @@ export function useAuth() {
   const [bindings, setBindings] = useState<BindingAccount[]>([]);
   const [endfieldApp, setEndfieldApp] = useState<GameAppInfo | null>(null);
 
-  const authenticate = useCallback(async (token: string) => {
+  const authenticate = useCallback(async (
+    token: string,
+    provider: 'hypergryph' | 'gryphline' = getAccountProviderPreference(),
+  ) => {
     setLoading(true);
     setError(null);
     
     try {
       // 1. 获取 app_token
-      const appToken = await grantAppToken(token, defaultOptions);
-      saveToken(appToken);
+      const appToken = await grantAppToken(token, { ...defaultOptions, provider });
+      saveAppToken(provider, appToken);
+      setAccountProviderPreference(provider);
 
       // 2. 获取绑定列表
-      const bindingRes = await fetchBindingList(appToken, defaultOptions);
+      const bindingRes = await fetchBindingList(appToken, { ...defaultOptions, provider });
       
       if (bindingRes.status !== 0) {
         throw new Error(bindingRes.msg || '获取绑定列表失败');
@@ -97,13 +103,13 @@ export function useAuth() {
 
       // 4. 保存所有账号到本地（异步）
       for (const binding of endfield.bindingList) {
-        await addAccountsFromBinding(binding);
+        await addAccountsFromBinding(binding, provider);
       }
 
       // 5. 设置默认选中的账号
       const activeUid = getActiveUid();
       const allRoleKeys = endfield.bindingList.flatMap((b) =>
-        (b.roles ?? []).map((r) => makeAccountKey(r.serverId, r.roleId)),
+        (b.roles ?? []).map((r) => makeAccountKey(r.serverId, r.roleId, provider)),
       );
       const hasActive = !!activeUid && allRoleKeys.includes(activeUid);
       const firstKey = allRoleKeys[0];
@@ -222,27 +228,30 @@ export function useGachaSync() {
   const [progress, setProgress] = useState<SyncProgress>({ status: 'idle' });
 
   const syncRecords = useCallback(async (uid: string): Promise<number> => {
-    const appToken = getToken();
-    if (!appToken) {
-      setProgress({ status: 'error', error: '未登录，请先添加 Token' });
-      throw new Error('未登录');
-    }
-
     let charAdded = 0;
     let weaponAdded = 0;
 
     try {
       const accounts = await getAccounts();
       const account = accounts.find((a) => a.uid === uid) ?? null;
+      const provider: 'hypergryph' | 'gryphline' =
+        account?.provider === 'gryphline' ? 'gryphline' : 'hypergryph';
+      const appToken = getAppToken(provider);
+      if (!appToken) {
+        setProgress({ status: 'error', error: '未登录该平台，请先在账号管理中添加对应平台 Token' });
+        throw new Error('missing app token');
+      }
       const hgUid = account ? getAccountHgUid(account) : null;
       if (!hgUid) {
         setProgress({ status: 'error', error: '该账号缺少 hgUid 信息，请重新绑定 Token 以补全账号' });
         throw new Error('missing hgUid');
       }
 
+      const options = { ...defaultOptions, provider };
+
       // 1. 获取 u8_token
       setProgress({ status: 'authenticating' });
-      const u8Token = await fetchU8TokenByUid(hgUid, appToken, defaultOptions);
+      const u8Token = await fetchU8TokenByUid(hgUid, appToken, options);
 
       // 2. 构建已存在记录的 seqId 集合（用于增量同步）
       const existingCharSeqIdsByPool = await buildExistingCharSeqIdsByPool(uid);
@@ -258,7 +267,7 @@ export function useGachaSync() {
       });
 
       const allRecords = await fetchAllGachaRecords(u8Token, {
-        ...defaultOptions,
+        ...options,
         // 分页请求延迟（防风控）
         minDelayMs: 800,
         maxDelayMs: 1500,

@@ -18,6 +18,8 @@ export { END_FIELD_CHAR_POOL_TYPES as END_FIELD_POOL_TYPES } from '@efgachahelpe
 
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+export type EndfieldProvider = 'hypergryph' | 'gryphline';
+
 export class HttpError extends Error {
   readonly status: number;
   readonly url: string;
@@ -58,6 +60,8 @@ export type EndfieldClientOptions = {
   lang?: string;
   /** Default: '1' (官方接口目前示例代码固定为 1) */
   serverId?: string;
+  /** Default: 'hypergryph' */
+  provider?: EndfieldProvider;
   /** Default: common desktop UA */
   userAgent?: string;
   /**
@@ -70,10 +74,21 @@ export type EndfieldClientOptions = {
 const DEFAULT_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.112 Safari/537.36';
 
+function providerToDomain(provider: EndfieldProvider): string {
+  return provider === 'gryphline' ? 'gryphline.com' : 'hypergryph.com';
+}
+
+function providerToGrantAppCode(provider: EndfieldProvider): string {
+  // 国服/鹰角：原 appCode（保持不变）
+  // 国际服/Gryphline：用户提供的 appCode
+  return provider === 'gryphline' ? '3dacefa138426cfe' : 'be36d44aa36bfb5b';
+}
+
 function pickOptions(options?: EndfieldClientOptions) {
   return {
     lang: options?.lang ?? 'zh-cn',
     serverId: options?.serverId ?? '1',
+    provider: options?.provider ?? 'hypergryph',
     userAgent: options?.userAgent ?? DEFAULT_UA,
     fetcher: options?.fetcher ?? fetch,
   };
@@ -93,9 +108,10 @@ export async function grantAppToken(
   token: string,
   options?: EndfieldClientOptions,
 ): Promise<string> {
-  const { userAgent, fetcher } = pickOptions(options);
+  const { userAgent, fetcher, provider } = pickOptions(options);
 
-  const url = 'https://as.hypergryph.com/user/oauth2/v2/grant';
+  const domain = providerToDomain(provider);
+  const url = `https://as.${domain}/user/oauth2/v2/grant`;
   const res = await fetcher(url, {
     method: 'POST',
     headers: {
@@ -104,7 +120,7 @@ export async function grantAppToken(
     },
     body: JSON.stringify({
       type: 1,
-      appCode: 'be36d44aa36bfb5b',
+      appCode: providerToGrantAppCode(provider),
       token,
     }),
   });
@@ -124,8 +140,9 @@ export async function fetchBindingList(
   appToken: string,
   options?: EndfieldClientOptions,
 ): Promise<UserBindingsResponse> {
-  const { userAgent, fetcher } = pickOptions(options);
-  const base = 'https://binding-api-account-prod.hypergryph.com/account/binding/v1/binding_list';
+  const { userAgent, fetcher, provider } = pickOptions(options);
+  const domain = providerToDomain(provider);
+  const base = `https://binding-api-account-prod.${domain}/account/binding/v1/binding_list`;
   const url = `${base}?${new URLSearchParams({ token: appToken, appCode: 'endfield' }).toString()}`;
 
   const res = await fetcher(url, {
@@ -147,9 +164,9 @@ export async function fetchU8TokenByUid(
   appToken: string,
   options?: EndfieldClientOptions,
 ): Promise<string> {
-  const { userAgent, fetcher } = pickOptions(options);
-  const url =
-    'https://binding-api-account-prod.hypergryph.com/account/binding/v1/u8_token_by_uid';
+  const { userAgent, fetcher, provider } = pickOptions(options);
+  const domain = providerToDomain(provider);
+  const url = `https://binding-api-account-prod.${domain}/account/binding/v1/u8_token_by_uid`;
 
   const res = await fetcher(url, {
     method: 'POST',
@@ -215,8 +232,9 @@ export async function fetchCharPoolRecords(
   input: FetchCharPoolRecordsInput,
   options?: EndfieldClientOptions,
 ): Promise<FetchCharPoolRecordsResult> {
-  const { lang, serverId, userAgent, fetcher } = pickOptions(options);
-  const base = 'https://ef-webview.hypergryph.com/api/record/char';
+  const { lang, serverId, userAgent, fetcher, provider } = pickOptions(options);
+  const domain = providerToDomain(provider);
+  const base = `https://ef-webview.${domain}/api/record/char`;
 
   const query = new URLSearchParams({
     lang,
@@ -268,8 +286,9 @@ export async function fetchWeaponPoolRecords(
   input: FetchWeaponPoolRecordsInput,
   options?: EndfieldClientOptions,
 ): Promise<FetchWeaponPoolRecordsResult> {
-  const { lang, serverId, userAgent, fetcher } = pickOptions(options);
-  const base = 'https://ef-webview.hypergryph.com/api/record/weapon';
+  const { lang, serverId, userAgent, fetcher, provider } = pickOptions(options);
+  const domain = providerToDomain(provider);
+  const base = `https://ef-webview.${domain}/api/record/weapon`;
 
   // 武器池不需要 pool_type 参数
   const query = new URLSearchParams({

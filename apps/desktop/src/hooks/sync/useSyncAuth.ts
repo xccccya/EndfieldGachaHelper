@@ -265,7 +265,13 @@ export function useSyncAuth() {
           const uid = account.uid;
           const parsed = parseAccountKey(uid);
           const cloudUid = getAccountRoleId(account) ?? parsed?.roleId ?? uid;
-          const region = getAccountServerId(account) ?? parsed?.serverId ?? 'default';
+          const baseServerId = getAccountServerId(account) ?? parsed?.serverId ?? 'default';
+          const provider: 'hypergryph' | 'gryphline' =
+            account.provider === 'gryphline' ? 'gryphline' : 'hypergryph';
+          // 云端 key 仅支持 uid+region，这里将 provider 编码进 region，避免国服/国际服冲突
+          const region = provider === 'gryphline' && baseServerId !== 'default'
+            ? `gryphline@${baseServerId}`
+            : baseServerId;
           const hgUid = getAccountHgUid(account) ?? undefined;
           
           // 获取本地角色记录

@@ -9,7 +9,7 @@ import {
   dbSaveAccount,
   dbRemoveAccount,
 } from '../db';
-import type { StoredAccount } from './types';
+import type { AccountProvider, StoredAccount } from './types';
 import { notifyStorageChange } from './events';
 import { getActiveUid, setActiveUid, clearActiveUid } from './preferences';
 
@@ -17,10 +17,13 @@ import { getActiveUid, setActiveUid, clearActiveUid } from './preferences';
 
 /**
  * 生成账号主键
- * 格式: serverId:roleId
+ * 格式（兼容）：
+ * - 国服（hypergryph）：`serverId:roleId`
+ * - 国际服（gryphline）：`gryphline@serverId:roleId`（避免与国服 roleKey 冲突）
  */
-export function makeAccountKey(serverId: string, roleId: string): string {
-  return `${serverId}:${roleId}`;
+export function makeAccountKey(serverId: string, roleId: string, provider?: AccountProvider): string {
+  const key = `${serverId}:${roleId}`;
+  return provider === 'gryphline' ? `gryphline@${key}` : key;
 }
 
 /**
@@ -28,10 +31,12 @@ export function makeAccountKey(serverId: string, roleId: string): string {
  */
 export function parseAccountKey(accountKey: string): { serverId: string; roleId: string } | null {
   if (!accountKey) return null;
-  const idx = accountKey.indexOf(':');
-  if (idx <= 0 || idx === accountKey.length - 1) return null;
-  const serverId = accountKey.slice(0, idx).trim();
-  const roleId = accountKey.slice(idx + 1).trim();
+  // 兼容 gryphline@serverId:roleId
+  const raw = accountKey.includes('@') ? accountKey.split('@', 2)[1] ?? '' : accountKey;
+  const idx = raw.indexOf(':');
+  if (idx <= 0 || idx === raw.length - 1) return null;
+  const serverId = raw.slice(0, idx).trim();
+  const roleId = raw.slice(idx + 1).trim();
   if (!serverId || !roleId) return null;
   return { serverId, roleId };
 }
@@ -83,6 +88,7 @@ export function getAccountHgUid(account: StoredAccount): string | null {
 function dbAccountToStored(dbAccount: {
   uid: string;
   hg_uid: string | null;
+  provider?: string | null;
   channel_name: string;
   roles: string;
   added_at: number;
@@ -100,12 +106,14 @@ function dbAccountToStored(dbAccount: {
 
   const uidIsLegacyHgUid = typeof dbAccount.uid === 'string' && dbAccount.uid.length > 0 && !dbAccount.uid.includes(':');
   const hgUid = dbAccount.hg_uid ?? (uidIsLegacyHgUid ? dbAccount.uid : null);
+  const provider = (dbAccount.provider === 'gryphline' ? 'gryphline' : 'hypergryph') as AccountProvider;
 
   return {
     uid: dbAccount.uid,
     channelName: dbAccount.channel_name,
     roles,
     addedAt: dbAccount.added_at,
+    provider,
     // 如果 uid 是 serverId:roleId 格式，设置 serverId 和 roleId
     ...(parsed ? { serverId: parsed.serverId, roleId: parsed.roleId } : {}),
     ...(hgUid ? { hgUid } : {}),
@@ -118,6 +126,7 @@ function dbAccountToStored(dbAccount: {
 function storedAccountToDB(account: StoredAccount): {
   uid: string;
   hg_uid: string | null;
+  provider: string | null;
   channel_name: string;
   roles: string;
   added_at: number;
@@ -125,6 +134,7 @@ function storedAccountToDB(account: StoredAccount): {
   return {
     uid: account.uid,
     hg_uid: account.hgUid ?? null,
+    provider: account.provider ?? 'hypergryph',
     channel_name: account.channelName,
     roles: JSON.stringify(account.roles ?? []),
     added_at: account.addedAt,
@@ -177,7 +187,10 @@ export async function removeAccount(uid: string): Promise<void> {
  * 根据绑定信息添加/更新账号
  * 一个 binding 的每个 role 对应一个账号（uid=serverId:roleId）
  */
-export async function addAccountsFromBinding(binding: BindingAccount): Promise<StoredAccount[]> {
+export async function addAccountsFromBinding(
+  binding: BindingAccount,
+  provider: AccountProvider = 'hypergryph',
+): Promise<StoredAccount[]> {
   const existingAccounts = await getAccounts();
   const now = Date.now();
 
@@ -190,6 +203,7 @@ export async function addAccountsFromBinding(binding: BindingAccount): Promise<S
     const account: StoredAccount = {
       uid: binding.uid,
       hgUid: binding.uid,
+      provider,
       channelName: binding.channelName,
       roles: [],
       addedAt: existing?.addedAt ?? now,
@@ -200,7 +214,7 @@ export async function addAccountsFromBinding(binding: BindingAccount): Promise<S
   }
 
   for (const role of roles) {
-    const accountKey = makeAccountKey(role.serverId, role.roleId);
+    const accountKey = makeAccountKey(role.serverId, role.roleId, provider);
     const existing = existingAccounts.find((a) => a.uid === accountKey);
 
     const channelName = role.serverName
@@ -210,6 +224,7 @@ export async function addAccountsFromBinding(binding: BindingAccount): Promise<S
     const account: StoredAccount = {
       uid: accountKey,
       hgUid: binding.uid,
+      provider,
       roleId: role.roleId,
       serverId: role.serverId,
       channelName,

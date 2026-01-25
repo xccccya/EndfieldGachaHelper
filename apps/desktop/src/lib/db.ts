@@ -33,13 +33,14 @@ async function initTables(): Promise<void> {
     CREATE TABLE IF NOT EXISTS accounts (
       uid TEXT PRIMARY KEY,
       hg_uid TEXT,
+      provider TEXT,
       channel_name TEXT NOT NULL,
       roles TEXT NOT NULL,
       added_at INTEGER NOT NULL
     )
   `);
 
-  // 数据库升级：为旧版本 accounts 表补齐 hg_uid 列
+  // 数据库升级：为旧版本 accounts 表补齐缺失列（hg_uid / provider）
   await ensureAccountsSchema();
   
   // 角色抽卡记录表
@@ -108,6 +109,11 @@ async function ensureAccountsSchema(): Promise<void> {
     const hasHgUid = columns.some((c) => c?.name === 'hg_uid');
     if (!hasHgUid) {
       await db.execute('ALTER TABLE accounts ADD COLUMN hg_uid TEXT');
+    }
+    const hasProvider = columns.some((c) => c?.name === 'provider');
+    if (!hasProvider) {
+      // 兼容旧库：先加可空列，后续读取时将 null 视为 hypergryph
+      await db.execute("ALTER TABLE accounts ADD COLUMN provider TEXT");
     }
   } catch (e) {
     // 保底：避免因为迁移失败导致整个应用无法启动
@@ -195,6 +201,7 @@ export async function cleanupLocalDuplicates(): Promise<{ charDeleted: number; w
 export type DBAccount = {
   uid: string;
   hg_uid: string | null;
+  provider: string | null;
   channel_name: string;
   roles: string; // JSON string
   added_at: number;
@@ -206,7 +213,7 @@ export type DBAccount = {
 export async function dbGetAccounts(): Promise<DBAccount[]> {
   const database = await getDB();
   return await database.select<DBAccount[]>(
-    'SELECT uid, hg_uid, channel_name, roles, added_at FROM accounts ORDER BY added_at DESC',
+    'SELECT uid, hg_uid, provider, channel_name, roles, added_at FROM accounts ORDER BY added_at DESC',
   );
 }
 
@@ -216,8 +223,8 @@ export async function dbGetAccounts(): Promise<DBAccount[]> {
 export async function dbSaveAccount(account: DBAccount): Promise<void> {
   const database = await getDB();
   await database.execute(
-    `INSERT OR REPLACE INTO accounts (uid, hg_uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4, $5)`,
-    [account.uid, account.hg_uid, account.channel_name, account.roles, account.added_at],
+    `INSERT OR REPLACE INTO accounts (uid, hg_uid, provider, channel_name, roles, added_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [account.uid, account.hg_uid, account.provider, account.channel_name, account.roles, account.added_at],
   );
 }
 
@@ -456,6 +463,7 @@ export async function migrateFromLocalStorage(): Promise<{
         await dbSaveAccount({
           uid,
           hg_uid: hgUid,
+          provider: 'hypergryph',
           channel_name: channelName,
           roles: JSON.stringify(acc.roles ?? []),
           added_at: addedAt,
