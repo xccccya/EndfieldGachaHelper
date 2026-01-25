@@ -118,8 +118,11 @@ export async function migrateFromLocalStorage(): Promise<{
 
       for (const acc of accounts) {
         if (!acc?.uid || !acc?.channelName) continue;
+        const uidIsLegacyHgUid = typeof acc.uid === 'string' && acc.uid.length > 0 && !acc.uid.includes(':');
+        const hgUid = acc.hgUid ?? (uidIsLegacyHgUid ? acc.uid : null);
         await dbSaveAccount({
           uid: acc.uid,
+          hg_uid: hgUid,
           channel_name: acc.channelName,
           roles: JSON.stringify(acc.roles ?? []),
           added_at: acc.addedAt ?? Date.now(),
@@ -316,9 +319,10 @@ export async function migrateAccountKeyFormat(): Promise<void> {
   for (const [oldHgUid, newUid] of uidMap) {
     const acc = finalAccounts.find((a) => a.hgUid === oldHgUid || a.uid === newUid);
     if (acc) {
+      const hgUidToSave = acc.hgUid ?? oldHgUid;
       await database.execute(
-        `INSERT OR REPLACE INTO accounts (uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4)`,
-        [newUid, acc.channelName, JSON.stringify(acc.roles ?? []), acc.addedAt],
+        `INSERT OR REPLACE INTO accounts (uid, hg_uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4, $5)`,
+        [newUid, hgUidToSave, acc.channelName, JSON.stringify(acc.roles ?? []), acc.addedAt],
       );
     }
     await database.execute(`DELETE FROM accounts WHERE uid = $1`, [oldHgUid]);

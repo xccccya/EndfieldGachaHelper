@@ -64,9 +64,14 @@ export function getAccountServerId(account: StoredAccount): string | null {
  * 获取账号的 hgUid
  */
 export function getAccountHgUid(account: StoredAccount): string | null {
-  // 新版优先使用显式字段；旧版历史数据中 uid 可能就是 hgUid
+  // 新版：优先使用显式字段（从绑定列表拿到并持久化到 SQLite 的 hgUid）
   if (account.hgUid) return account.hgUid;
-  if (account.roles[0]?.roleId && account.roles[0]?.serverId) return account.uid || null;
+
+  // 旧版兼容：历史数据里 uid 可能就是 hgUid（通常为纯数字且不包含 ':'）
+  const uid = account.uid || '';
+  if (uid && !uid.includes(':')) return uid;
+
+  // 绝对不要把 serverId:roleId 当作 hgUid 返回
   return null;
 }
 
@@ -77,6 +82,7 @@ export function getAccountHgUid(account: StoredAccount): string | null {
  */
 function dbAccountToStored(dbAccount: {
   uid: string;
+  hg_uid: string | null;
   channel_name: string;
   roles: string;
   added_at: number;
@@ -92,6 +98,9 @@ function dbAccountToStored(dbAccount: {
   // 解析 uid 以获取 serverId 和 roleId
   const parsed = parseAccountKey(dbAccount.uid);
 
+  const uidIsLegacyHgUid = typeof dbAccount.uid === 'string' && dbAccount.uid.length > 0 && !dbAccount.uid.includes(':');
+  const hgUid = dbAccount.hg_uid ?? (uidIsLegacyHgUid ? dbAccount.uid : null);
+
   return {
     uid: dbAccount.uid,
     channelName: dbAccount.channel_name,
@@ -99,8 +108,7 @@ function dbAccountToStored(dbAccount: {
     addedAt: dbAccount.added_at,
     // 如果 uid 是 serverId:roleId 格式，设置 serverId 和 roleId
     ...(parsed ? { serverId: parsed.serverId, roleId: parsed.roleId } : {}),
-    // 从 roles 中获取 hgUid（如果有）
-    ...(roles[0]?.roleId ? {} : { hgUid: dbAccount.uid }),
+    ...(hgUid ? { hgUid } : {}),
   };
 }
 
@@ -109,12 +117,14 @@ function dbAccountToStored(dbAccount: {
  */
 function storedAccountToDB(account: StoredAccount): {
   uid: string;
+  hg_uid: string | null;
   channel_name: string;
   roles: string;
   added_at: number;
 } {
   return {
     uid: account.uid,
+    hg_uid: account.hgUid ?? null,
     channel_name: account.channelName,
     roles: JSON.stringify(account.roles ?? []),
     added_at: account.addedAt,

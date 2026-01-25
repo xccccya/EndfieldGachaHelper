@@ -32,11 +32,15 @@ async function initTables(): Promise<void> {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS accounts (
       uid TEXT PRIMARY KEY,
+      hg_uid TEXT,
       channel_name TEXT NOT NULL,
       roles TEXT NOT NULL,
       added_at INTEGER NOT NULL
     )
   `);
+
+  // 数据库升级：为旧版本 accounts 表补齐 hg_uid 列
+  await ensureAccountsSchema();
   
   // 角色抽卡记录表
   await db.execute(`
@@ -91,6 +95,24 @@ async function initTables(): Promise<void> {
   await db.execute(`
     CREATE INDEX IF NOT EXISTS idx_weapon_ts ON weapon_records(gacha_ts)
   `);
+}
+
+/**
+ * 确保 accounts 表结构包含 hg_uid 列（用于换取 u8_token）。
+ * 旧版本表结构缺少该列，会导致 hgUid 无法持久化，从而同步失败。
+ */
+async function ensureAccountsSchema(): Promise<void> {
+  if (!db) return;
+  try {
+    const columns = await db.select<{ name: string }[]>('PRAGMA table_info(accounts)');
+    const hasHgUid = columns.some((c) => c?.name === 'hg_uid');
+    if (!hasHgUid) {
+      await db.execute('ALTER TABLE accounts ADD COLUMN hg_uid TEXT');
+    }
+  } catch (e) {
+    // 保底：避免因为迁移失败导致整个应用无法启动
+    console.error('[db] ensureAccountsSchema failed:', e);
+  }
 }
 
 /**
@@ -172,6 +194,7 @@ export async function cleanupLocalDuplicates(): Promise<{ charDeleted: number; w
 
 export type DBAccount = {
   uid: string;
+  hg_uid: string | null;
   channel_name: string;
   roles: string; // JSON string
   added_at: number;
@@ -182,7 +205,9 @@ export type DBAccount = {
  */
 export async function dbGetAccounts(): Promise<DBAccount[]> {
   const database = await getDB();
-  return await database.select<DBAccount[]>('SELECT * FROM accounts ORDER BY added_at DESC');
+  return await database.select<DBAccount[]>(
+    'SELECT uid, hg_uid, channel_name, roles, added_at FROM accounts ORDER BY added_at DESC',
+  );
 }
 
 /**
@@ -191,8 +216,8 @@ export async function dbGetAccounts(): Promise<DBAccount[]> {
 export async function dbSaveAccount(account: DBAccount): Promise<void> {
   const database = await getDB();
   await database.execute(
-    `INSERT OR REPLACE INTO accounts (uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4)`,
-    [account.uid, account.channel_name, account.roles, account.added_at]
+    `INSERT OR REPLACE INTO accounts (uid, hg_uid, channel_name, roles, added_at) VALUES ($1, $2, $3, $4, $5)`,
+    [account.uid, account.hg_uid, account.channel_name, account.roles, account.added_at],
   );
 }
 
@@ -423,8 +448,14 @@ export async function migrateFromLocalStorage(): Promise<{
         const addedAt = typeof acc.addedAt === 'number' ? acc.addedAt : null;
         if (!uid || !channelName || addedAt === null) continue;
 
+        const uidIsLegacyHgUid = typeof uid === 'string' && uid.length > 0 && !uid.includes(':');
+        const hgUid =
+          (typeof acc.hgUid === 'string' && acc.hgUid.trim().length > 0 ? acc.hgUid : null) ??
+          (uidIsLegacyHgUid ? uid : null);
+
         await dbSaveAccount({
           uid,
+          hg_uid: hgUid,
           channel_name: channelName,
           roles: JSON.stringify(acc.roles ?? []),
           added_at: addedAt,

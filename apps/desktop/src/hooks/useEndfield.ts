@@ -17,6 +17,8 @@ import {
   fetchBindingList,
   fetchU8TokenByUid,
   fetchAllGachaRecords,
+  EndfieldRiskControlError,
+  HttpError,
 } from '../features/endfield/endfieldApi';
 import { tauriFetcher } from '../lib/tauriHttp';
 import {
@@ -317,9 +319,17 @@ export function useGachaSync() {
       console.error('[useGachaSync] Sync error:', err);
       let message = '同步失败';
       if (err instanceof Error) {
-        if (err.message.includes('fetchU8TokenByUid failed')) {
-          message = 'Token 已过期，请重新添加账号';
-        } else if (err.message.includes('Failed to fetch') || err.message.includes('fetch')) {
+        if (err instanceof EndfieldRiskControlError) {
+          message =
+            '官方接口请求过于频繁，已触发风控/请求超限。请稍后再试，并避免短时间内多次同步拉取数据，否则可能持续被限制。';
+        } else if (err instanceof HttpError && err.message.includes('fetchU8TokenByUid failed')) {
+          // u8_token 获取失败：更精确地区分 token 问题与服务端错误
+          if (err.status === 401 || err.status === 403) {
+            message = '账号凭证已失效，请重新添加 Token 后再同步';
+          } else {
+            message = `获取同步凭证失败（HTTP ${err.status}），请稍后再试`;
+          }
+        } else if (err.message.includes('网络请求失败') || err.message.includes('Failed to fetch')) {
           message = '网络连接失败，请检查网络设置';
         } else {
           message = err.message;

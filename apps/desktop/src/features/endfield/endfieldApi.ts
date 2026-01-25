@@ -33,6 +33,26 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * 官方接口触发风控/请求超限时的特征错误。
+ *
+ * 备注：`binding-api-account-prod.hypergryph.com/account/binding/v1/u8_token_by_uid`
+ * 在请求超限/风控场景下可能返回 `404 page not found`（有时甚至会以 200 + 文本形式返回）。
+ * 为了给 UI 提供更准确的提示，这里将其提升为明确的错误类型。
+ */
+export class EndfieldRiskControlError extends Error {
+  readonly status: number;
+  readonly url: string;
+  readonly responseText: string | undefined;
+  constructor(message: string, status: number, url: string, responseText?: string) {
+    super(message);
+    this.name = 'EndfieldRiskControlError';
+    this.status = status;
+    this.url = url;
+    this.responseText = responseText;
+  }
+}
+
 export type EndfieldClientOptions = {
   /** Default: 'zh-cn' */
   lang?: string;
@@ -57,6 +77,12 @@ function pickOptions(options?: EndfieldClientOptions) {
     userAgent: options?.userAgent ?? DEFAULT_UA,
     fetcher: options?.fetcher ?? fetch,
   };
+}
+
+function is404PageNotFound(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  // 常见：纯文本 "404 page not found"，也可能在 HTML/错误页中出现
+  return normalized === '404 page not found' || normalized.includes('404 page not found');
 }
 
 /**
@@ -133,8 +159,31 @@ export async function fetchU8TokenByUid(
     },
     body: JSON.stringify({ uid, token: appToken }),
   });
-  if (!res.ok) throw new HttpError('fetchU8TokenByUid failed', res.status, url);
-  const json = (await res.json()) as { data?: { token?: string } };
+
+  // 注意：这里不要直接 res.json()，因为风控/超限时可能返回非 JSON 文本（例如：404 page not found）
+  const text = await res.text();
+
+  // 1) 非 2xx：先判断风控/超限特征，再抛出通用 HTTP 错误
+  if (!res.ok) {
+    if (res.status === 404 && is404PageNotFound(text)) {
+      throw new EndfieldRiskControlError('fetchU8TokenByUid: risk control / rate limited', res.status, url, text);
+    }
+    throw new HttpError('fetchU8TokenByUid failed', res.status, url);
+  }
+
+  // 2) 2xx 但返回了错误文本：同样按风控/超限处理
+  if (is404PageNotFound(text)) {
+    throw new EndfieldRiskControlError('fetchU8TokenByUid: risk control / rate limited', res.status, url, text);
+  }
+
+  // 3) 正常 JSON
+  let json: { data?: { token?: string } } | null = null;
+  try {
+    json = JSON.parse(text) as { data?: { token?: string } };
+  } catch {
+    throw new Error('fetchU8TokenByUid: invalid JSON response');
+  }
+
   const u8 = json?.data?.token;
   if (!u8) throw new Error('fetchU8TokenByUid: missing u8 token in response');
   return u8;
