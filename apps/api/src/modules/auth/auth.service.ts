@@ -22,11 +22,14 @@ export class AuthService {
   ) {}
 
   private accessSecret() {
-    return this.config.get<string>('JWT_ACCESS_SECRET', { infer: true }) ?? '';
+    // 与 JwtStrategy 的 dev 默认值保持一致，避免“签发/校验 secret 不一致”导致的隐性掉线
+    const v = this.config.get<string>('JWT_ACCESS_SECRET', { infer: true });
+    return typeof v === 'string' && v.trim().length > 0 ? v : 'dev-access-secret';
   }
 
   private refreshSecret() {
-    return this.config.get<string>('JWT_REFRESH_SECRET', { infer: true }) ?? '';
+    const v = this.config.get<string>('JWT_REFRESH_SECRET', { infer: true });
+    return typeof v === 'string' && v.trim().length > 0 ? v : 'dev-refresh-secret';
   }
 
   private accessExpiresIn() {
@@ -35,6 +38,13 @@ export class AuthService {
 
   private refreshExpiresIn() {
     return (this.config.get<string>('JWT_REFRESH_EXPIRES_IN', { infer: true }) ?? '30d') as StringValue;
+  }
+
+  private getJwtExpiresAt(token: string): Date | null {
+    const decoded = this.jwt.decode<{ exp?: number }>(token);
+    const exp = decoded?.exp;
+    if (!exp || typeof exp !== 'number') return null;
+    return new Date(exp * 1000);
   }
 
   private async issueTokens(userId: string, email: string): Promise<Tokens> {
@@ -50,8 +60,8 @@ export class AuthService {
 
     const tokenHash = await argon2.hash(refreshToken);
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30); // 先按 30d 兜底
+    // 以 refresh JWT 自身的 exp 为准，避免配置/库解析差异导致 DB 过期时间不一致
+    const expiresAt = this.getJwtExpiresAt(refreshToken) ?? new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
 
     await this.prisma.refreshToken.create({
       data: {
@@ -206,7 +216,11 @@ export class AuthService {
     let payload: { sub: string; email: string };
     try {
       payload = await this.jwt.verifyAsync(refreshToken, { secret: this.refreshSecret() });
-    } catch {
+    } catch (e) {
+      // 更精确的错误信息，便于客户端区分“过期 vs 无效”
+      if (e && typeof e === 'object' && 'name' in e && (e as { name?: string }).name === 'TokenExpiredError') {
+        throw new UnauthorizedException('refresh token 已过期');
+      }
       throw new UnauthorizedException('refresh token 无效');
     }
 
@@ -219,6 +233,15 @@ export class AuthService {
 
     const match = await this.findMatchingToken(candidates, refreshToken);
     if (!match) throw new UnauthorizedException('refresh token 已失效');
+
+    // 额外保护：即便 JWT 还没过期，也以 DB 过期时间为准（便于未来做服务端强制失效/清理）
+    if (match.expiresAt.getTime() <= Date.now()) {
+      await this.prisma.refreshToken.update({
+        where: { id: match.id },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException('refresh token 已过期');
+    }
 
     // 轮换：撤销旧 token，发新 token
     await this.prisma.refreshToken.update({
@@ -252,7 +275,7 @@ export class AuthService {
   }
 
   private async findMatchingToken(
-    candidates: Array<{ id: string; tokenHash: string }>,
+    candidates: Array<{ id: string; tokenHash: string; expiresAt: Date }>,
     token: string,
   ) {
     for (const c of candidates) {

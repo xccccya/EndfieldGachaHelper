@@ -90,14 +90,18 @@ export function MainLayout() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
-    listen<{ path: string; replace?: boolean }>('efgh:navigate', (event) => {
+    void listen<{ path: string; replace?: boolean }>('efgh:navigate', (event) => {
       const path = event.payload?.path;
       if (typeof path === 'string' && path.length > 0) {
         void navigate(path, { replace: !!event.payload?.replace });
       }
-    }).then((fn) => {
-      unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((e: unknown) => {
+        console.error('[MainLayout] Failed to listen efgh:navigate:', e);
+      });
 
     return () => {
       unlisten?.();
@@ -148,7 +152,7 @@ export function MainLayout() {
       <CloseConfirmModal
         open={showCloseConfirm}
         onClose={() => setShowCloseConfirm(false)}
-        onConfirm={handleCloseBehavior}
+        onConfirm={(behavior, remember) => { void handleCloseBehavior(behavior, remember); }}
       />
 
       {/* 主内容区域 */}

@@ -4,7 +4,8 @@ use serde::Serialize;
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder,
+    WindowEvent,
 };
 
 /// 托盘菜单位置数据
@@ -24,6 +25,32 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
+/// 确保托盘菜单窗口已创建（常驻隐藏，避免首次展示闪白）
+fn ensure_tray_menu_window(app: &AppHandle) {
+    if app.get_webview_window("tray-menu").is_some() {
+        return;
+    }
+
+    // 初次创建时隐藏窗口，让 WebView 在后台完成初始渲染
+    // 之后右键仅 reposition + show，不再每次重建窗口。
+    let _ = WebviewWindowBuilder::new(
+        app,
+        "tray-menu",
+        WebviewUrl::App("/tray-menu".into()),
+    )
+    .title("托盘菜单")
+    .inner_size(236.0, 244.0)
+    .decorations(false)
+    .resizable(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .transparent(true)
+    .shadow(false) // 禁用阴影以支持透明
+    .visible(false) // 关键：初始隐藏，避免首次弹出露出白底
+    .focused(false)
+    .build();
+}
+
 /// 显示托盘菜单窗口
 fn show_tray_menu(app: &AppHandle, x: i32, y: i32) {
     // 菜单窗口尺寸
@@ -32,10 +59,8 @@ fn show_tray_menu(app: &AppHandle, x: i32, y: i32) {
     const MENU_HEIGHT: f64 = 244.0;
     const MARGIN: f64 = 8.0;
 
-    // 如果已存在菜单窗口，先关闭它
-    if let Some(menu_window) = app.get_webview_window("tray-menu") {
-        let _ = menu_window.close();
-    }
+    // 确保窗口存在（常驻隐藏）
+    ensure_tray_menu_window(app);
 
     // 获取点击位置所在的显示器信息
     let mut screen_width: f64 = 1920.0;
@@ -85,38 +110,26 @@ fn show_tray_menu(app: &AppHandle, x: i32, y: i32) {
         menu_y = screen_y + screen_height - MENU_HEIGHT - MARGIN;
     }
 
-    // 创建菜单窗口
-    let menu_window = WebviewWindowBuilder::new(
-        app,
-        "tray-menu",
-        WebviewUrl::App("/tray-menu".into()),
-    )
-    .title("托盘菜单")
-    .inner_size(MENU_WIDTH, MENU_HEIGHT)
-    .position(menu_x, menu_y)
-    .decorations(false)
-    .resizable(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .transparent(true)
-    .shadow(false) // 禁用阴影以支持透明
-    .visible(true) // 直接显示
-    .focused(true)
-    .build();
-
-    match menu_window {
-        Ok(window) => {
-            let _ = window.emit("tray-menu-position", TrayMenuPosition { x, y });
-            let _ = window.set_focus();
+    // 展示/定位窗口（不重建，避免白框闪烁）
+    if let Some(window) = app.get_webview_window("tray-menu") {
+        // 右键再次点击：行为更贴近原生（可视时直接收起）
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+            return;
         }
-        Err(_) => {}
+
+        let _ = window.set_size(LogicalSize::new(MENU_WIDTH, MENU_HEIGHT));
+        let _ = window.set_position(LogicalPosition::new(menu_x, menu_y));
+        let _ = window.show();
+        let _ = window.set_focus();
+        let _ = window.emit("tray-menu-position", TrayMenuPosition { x, y });
     }
 }
 
 /// 隐藏托盘菜单窗口
 fn hide_tray_menu(app: &AppHandle) {
     if let Some(menu_window) = app.get_webview_window("tray-menu") {
-        let _ = menu_window.close();
+        let _ = menu_window.hide();
     }
 }
 
@@ -236,6 +249,10 @@ fn main() {
                 })
                 .build(app)?;
 
+            // 预创建托盘菜单窗口（隐藏），避免首次弹出闪白
+            let app_handle = app.handle().clone();
+            ensure_tray_menu_window(&app_handle);
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -250,9 +267,9 @@ fn main() {
                     // 托盘菜单窗口：允许正常关闭
                 }
                 WindowEvent::Focused(focused) => {
-                    // 托盘菜单窗口失去焦点时自动关闭
+                    // 托盘菜单窗口失去焦点时自动隐藏（不要 close，避免下次重建闪白）
                     if !focused && window.label() == "tray-menu" {
-                        let _ = window.close();
+                        let _ = window.hide();
                     }
                 }
                 _ => {}

@@ -234,11 +234,15 @@ export function TrayMenuPage() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
-    listen('tray-toggle-sync', () => {
+    void listen('tray-toggle-sync', () => {
       loadSyncConfig();
-    }).then((fn) => {
-      unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((e: unknown) => {
+        console.error('[TrayMenu] Failed to listen tray-toggle-sync:', e);
+      });
 
     return () => {
       unlisten?.();
@@ -289,7 +293,7 @@ export function TrayMenuPage() {
       // 失败则回滚
       setSyncConfig((prev) => (prev ? { ...prev, autoSync: !enabled } : prev));
     }
-  }, [isLoggedIn, loadSyncConfig]);
+  }, [isLoggedIn]);
 
   // 退出应用
   const handleQuit = useCallback(async () => {
@@ -332,7 +336,12 @@ export function TrayMenuPage() {
         {/* 菜单内容 */}
         <div className="flex-1 p-1.5 overflow-hidden space-y-0.5">
           {/* 显示主窗口 */}
-          <MenuItem isDark={isDark} icon={<Icons.Window />} label="显示主窗口" onClick={handleShowWindow} />
+          <MenuItem
+            isDark={isDark}
+            icon={<Icons.Window />}
+            label="显示主窗口"
+            onClick={() => { void handleShowWindow(); }}
+          />
 
           <Divider isDark={isDark} />
 
@@ -363,7 +372,7 @@ export function TrayMenuPage() {
                   px-2.5 py-2 flex items-center gap-3 rounded-lg transition-all cursor-pointer group mx-1
                   ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}
                 `}
-                onClick={() => { void handleSetAutoSync(!Boolean(syncConfig?.autoSync)); }}
+                onClick={() => { void handleSetAutoSync(!syncConfig?.autoSync); }}
               >
                 <span className={`
                   p-1.5 rounded-md transition-all duration-150
@@ -406,14 +415,25 @@ export function TrayMenuPage() {
                   </div>
                 </div>
               </div>
-              <MenuItem isDark={isDark} icon={<Icons.Login />} label="登录云同步账号" onClick={handleOpenCloudSync} />
+              <MenuItem
+                isDark={isDark}
+                icon={<Icons.Login />}
+                label="登录云同步账号"
+                onClick={() => { void handleOpenCloudSync(); }}
+              />
             </>
           )}
 
           <Divider isDark={isDark} />
 
           {/* 退出程序 */}
-          <MenuItem isDark={isDark} icon={<Icons.Exit />} label="退出程序" onClick={handleQuit} danger />
+          <MenuItem
+            isDark={isDark}
+            icon={<Icons.Exit />}
+            label="退出程序"
+            onClick={() => { void handleQuit(); }}
+            danger
+          />
         </div>
 
         {/* 底部渐变装饰条 */}

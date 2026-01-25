@@ -11,10 +11,11 @@ export type JwtPayload = {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
+    const accessSecret = config.get<string>('JWT_ACCESS_SECRET', { infer: true });
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_ACCESS_SECRET', { infer: true }) ?? 'dev-access-secret',
+      secretOrKey: typeof accessSecret === 'string' && accessSecret.trim().length > 0 ? accessSecret : 'dev-access-secret',
     });
   }
 

@@ -154,12 +154,26 @@ function clearSyncConfig(errorMessage?: string): void {
 }
 
 // 防止并发刷新
-let refreshPromise: Promise<{ accessToken: string; refreshToken: string } | null> | null = null;
+type RefreshAttemptResult =
+  | { ok: true; tokens: { accessToken: string; refreshToken: string } }
+  | { ok: false; reason: 'auth' | 'transient'; status?: number; message?: string };
+
+let refreshPromise: Promise<RefreshAttemptResult> | null = null;
+
+async function safeParseJson<T>(response: Response): Promise<T | null> {
+  try {
+    const text = await response.text();
+    if (!text) return null;
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 尝试刷新 access token
  */
-async function tryRefreshToken(): Promise<{ accessToken: string; refreshToken: string } | null> {
+async function tryRefreshTokenDetailed(): Promise<RefreshAttemptResult> {
   // 如果已经在刷新，等待现有的刷新完成
   if (refreshPromise) {
     return refreshPromise;
@@ -167,10 +181,10 @@ async function tryRefreshToken(): Promise<{ accessToken: string; refreshToken: s
 
   const { refreshToken } = getSyncConfigTokens();
   if (!refreshToken) {
-    return null;
+    return { ok: false, reason: 'auth' };
   }
 
-  refreshPromise = (async () => {
+  refreshPromise = (async (): Promise<RefreshAttemptResult> => {
     try {
       const fetchFn = isTauri() ? tauriFetch : fetch;
       const response = await fetchFn(`${getApiUrl()}/auth/refresh`, {
@@ -180,21 +194,35 @@ async function tryRefreshToken(): Promise<{ accessToken: string; refreshToken: s
       });
 
       if (!response.ok) {
-        // 刷新失败，清除登录状态并保留错误信息
-        console.log('[SyncApi] Refresh token 已过期，需要重新登录');
-        clearSyncConfig('登录已过期，请重新登录');
-        return null;
+        /**
+         * 只在明确的鉴权失败（401/403）时清空登录态。
+         * 其他错误（如 5xx/网络抖动）不应直接踢下线，让上层决定是否重试/提示。
+         */
+        const status = typeof response.status === 'number' ? response.status : 0;
+        const err = await safeParseJson<{ message?: string }>(response);
+        const msg = typeof err?.message === 'string' ? err.message : undefined;
+        if (status === 401 || status === 403) {
+          console.log('[SyncApi] Refresh token 已失效，需要重新登录');
+          clearSyncConfig(msg ?? '登录已过期，请重新登录');
+          return { ok: false, reason: 'auth', status, ...(msg ? { message: msg } : {}) };
+        } else {
+          console.warn('[SyncApi] Refresh 请求失败，保留登录态以便重试', { status });
+          return { ok: false, reason: 'transient', status, ...(msg ? { message: msg } : {}) };
+        }
       }
 
-      const data = await response.json() as { accessToken: string; refreshToken: string };
+      const data = (await safeParseJson<{ accessToken: string; refreshToken: string }>(response)) ?? null;
+      if (!data?.accessToken || !data?.refreshToken) {
+        console.warn('[SyncApi] Refresh 响应格式异常，保留登录态以便重试');
+        return { ok: false, reason: 'transient', status: 0 };
+      }
       // 更新本地存储的 token
       updateSyncConfigTokens(data);
       console.log('[SyncApi] Token 已自动刷新');
-      return data;
+      return { ok: true, tokens: data };
     } catch {
-      // 刷新失败，清除登录状态并保留错误信息
-      clearSyncConfig('登录已过期，请重新登录');
-      return null;
+      // 网络错误等：不直接清空登录态（避免误判）
+      return { ok: false, reason: 'transient' };
     } finally {
       refreshPromise = null;
     }
@@ -257,12 +285,13 @@ async function request<T>(
     // 如果是 401 且有 accessToken，尝试刷新 token 并重试
     if (error instanceof SyncApiError && error.statusCode === 401 && accessToken) {
       console.log('[SyncApi] Access token 过期，尝试刷新...');
-      const newTokens = await tryRefreshToken();
+      // 这里需要区分：refresh 真的过期（需要重新登录） vs 网络/服务异常（保留登录态）
+      const refreshResult = await tryRefreshTokenDetailed();
       
-      if (newTokens) {
+      if (refreshResult.ok) {
         // 使用新 token 重试请求
         try {
-          return await doRequest(newTokens.accessToken);
+          return await doRequest(refreshResult.tokens.accessToken);
         } catch (retryError) {
           if (retryError instanceof SyncApiError) {
             throw retryError;
@@ -271,8 +300,11 @@ async function request<T>(
           throw new SyncApiError(0, message);
         }
       } else {
-        // 刷新失败，抛出原始错误（会触发重新登录）
-        throw new SyncApiError(401, '登录已过期，请重新登录');
+        if (refreshResult.reason === 'auth') {
+          throw new SyncApiError(401, refreshResult.message ?? '登录已过期，请重新登录');
+        }
+        // 临时错误：保留登录态，提示稍后重试
+        throw new SyncApiError(503, '网络或服务异常，已保留登录态，请稍后重试');
       }
     }
     

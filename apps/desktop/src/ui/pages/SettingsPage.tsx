@@ -43,6 +43,7 @@ import {
 const LANGUAGES = [
   { code: 'zh-CN', name: '简体中文', flag: '🇨🇳' },
   { code: 'en-US', name: 'English', flag: '🇺🇸' },
+  { code: 'ja-JP', name: '日本語', flag: '🇯🇵' },
 ] as const;
 
 type MessageState = {

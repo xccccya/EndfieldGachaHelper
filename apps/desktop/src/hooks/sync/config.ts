@@ -26,6 +26,7 @@ export const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 分钟
 // ============== 内存缓存 ==============
 
 let syncConfigCache: SyncConfig | null = null;
+let syncConfigCacheRaw: string | null = null;
 
 // ============== 事件通知 ==============
 
@@ -90,18 +91,23 @@ export function clearForceFullDownload(uid: string): void {
  * 获取同步配置
  */
 export function getSyncConfig(): SyncConfig {
-  if (syncConfigCache) return syncConfigCache;
-  
   try {
     const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    if (raw && syncConfigCache && syncConfigCacheRaw === raw) {
+      return syncConfigCache;
+    }
     if (raw) {
       syncConfigCache = JSON.parse(raw) as SyncConfig;
+      syncConfigCacheRaw = raw;
       return syncConfigCache;
     }
   } catch (e) {
     console.error('Failed to parse sync config:', e);
   }
-  
+
+  // 缓存失效
+  syncConfigCache = null;
+  syncConfigCacheRaw = null;
   return DEFAULT_SYNC_CONFIG;
 }
 
@@ -109,8 +115,10 @@ export function getSyncConfig(): SyncConfig {
  * 保存同步配置
  */
 export function saveSyncConfig(config: SyncConfig): void {
+  const raw = JSON.stringify(config);
   syncConfigCache = config;
-  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
+  syncConfigCacheRaw = raw;
+  localStorage.setItem(SYNC_CONFIG_KEY, raw);
   notifySyncChange();
 }
 
@@ -127,8 +135,21 @@ export function updateSyncConfig(partial: Partial<SyncConfig>): void {
  */
 export function subscribeSyncConfig(callback: () => void): () => void {
   const handler = () => callback();
+
+  // 当前窗口内：saveSyncConfig/notifySyncChange 会派发自定义事件
   window.addEventListener(SYNC_CHANGE_EVENT, handler);
-  return () => window.removeEventListener(SYNC_CHANGE_EVENT, handler);
+
+  // 跨窗口（如托盘菜单独立窗口）：主题/登录态变化来自其他窗口时，仅会触发 storage 事件
+  const onStorage = (evt: StorageEvent) => {
+    if (evt.key !== SYNC_CONFIG_KEY) return;
+    callback();
+  };
+  window.addEventListener('storage', onStorage);
+
+  return () => {
+    window.removeEventListener(SYNC_CHANGE_EVENT, handler);
+    window.removeEventListener('storage', onStorage);
+  };
 }
 
 /**

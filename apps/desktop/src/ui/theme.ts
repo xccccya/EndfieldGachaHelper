@@ -33,8 +33,19 @@ export function useTheme(): Theme {
       if (detail === 'light' || detail === 'dark') set(detail);
     };
 
+    // 关键：跨窗口（如托盘菜单独立窗口）同步主题
+    // 主窗口 setTheme 写入 localStorage 后，其他窗口会收到 storage 事件。
+    const onStorage = (evt: StorageEvent) => {
+      if (evt.key !== STORAGE_KEY) return;
+      if (evt.newValue === 'light' || evt.newValue === 'dark') set(evt.newValue);
+    };
+
     window.addEventListener('efgh:theme', onTheme);
-    return () => window.removeEventListener('efgh:theme', onTheme);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('efgh:theme', onTheme);
+      window.removeEventListener('storage', onStorage);
+    };
   }, [theme]);
 
   return theme;
