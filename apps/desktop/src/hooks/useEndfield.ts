@@ -30,6 +30,7 @@ import {
   makeAccountKey,
   getAccounts,
   getAccountHgUid,
+  getAccountServerId,
   addGachaRecords,
   addWeaponRecords,
   setActiveUid,
@@ -247,7 +248,14 @@ export function useGachaSync() {
         throw new Error('missing hgUid');
       }
 
-      const options = { ...defaultOptions, provider };
+      // 获取账号的 serverId（国服默认 '1'，国际服为 '2' 或 '3'）
+      const serverId = account ? getAccountServerId(account) : null;
+      if (!serverId) {
+        setProgress({ status: 'error', error: '该账号缺少 serverId 信息，请重新绑定 Token 以补全账号' });
+        throw new Error('missing serverId');
+      }
+
+      const options = { ...defaultOptions, provider, serverId };
 
       // 1. 获取 u8_token
       setProgress({ status: 'authenticating' });

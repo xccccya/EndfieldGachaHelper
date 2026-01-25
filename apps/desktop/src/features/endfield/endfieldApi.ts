@@ -606,6 +606,7 @@ export async function fetchAllGachaRecords(
   const baseOptions: EndfieldClientOptions = {
     ...(options?.lang !== undefined && { lang: options.lang }),
     ...(options?.serverId !== undefined && { serverId: options.serverId }),
+    ...(options?.provider !== undefined && { provider: options.provider }),
     ...(options?.userAgent !== undefined && { userAgent: options.userAgent }),
     ...(options?.fetcher !== undefined && { fetcher: options.fetcher }),
   };
