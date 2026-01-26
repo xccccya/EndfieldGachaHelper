@@ -33,9 +33,9 @@ const variantClasses: Record<BadgeVariant, string> = {
   warning: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   error: 'bg-red-500/20 text-red-400 border-red-500/30',
   // 稀有度颜色
-  rarity6: 'bg-red-500/20 text-red-400 border-red-500/50',
-  rarity5: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
-  rarity4: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+  rarity6: 'bg-orange-500/20 text-orange-500 border-orange-500/50',
+  rarity5: 'bg-amber-500/20 text-amber-400 border-amber-500/50',
+  rarity4: 'bg-purple-500/20 text-purple-500 border-purple-500/50',
   rarity3: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
 };
 
@@ -64,7 +64,7 @@ export function RarityBadge({ rarity }: { rarity: number }) {
   
   return (
     <Badge variant={variant}>
-      {rarity}星
+      {rarity}★
     </Badge>
   );
 }

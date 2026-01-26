@@ -86,7 +86,7 @@ html.no-transition * {
   transition: none !important;
 }
 
-/* 排除滚动条和交互元素的主题过渡 */
+/* 排除滚动条和交互元素的主题过渡（scrollbar fix） */
 ::-webkit-scrollbar,
 ::-webkit-scrollbar-track,
 ::-webkit-scrollbar-thumb,
@@ -377,24 +377,51 @@ html[data-theme='dark'] select option {
   }
 }
 
-/* StatsPage 折叠展开：使用 grid-rows 过渡避免测量高度 */
+/* StatsPage 折叠展开：使用 grid-rows 过渡避免测量高度
+   额外叠加内容淡入/位移，提升“呼吸感”与自然度 */
 .ef-collapse {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* 收起：更快、更干净 */
+  transition-property: grid-template-rows;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none; /* 折叠时避免误触内部控件 */
 }
 
 .ef-collapse[data-expanded='true'] {
   grid-template-rows: 1fr;
+  /* 展开：更慢一点，质感更“软” */
+  transition-duration: 320ms;
+  pointer-events: auto;
 }
 
 .ef-collapse__inner {
   overflow: hidden;
+  will-change: transform, opacity;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.99);
+  transition:
+    opacity 180ms ease-out,
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-collapse[data-expanded='true'] .ef-collapse__inner {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 40ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ef-collapse {
     transition: none !important;
+    pointer-events: auto;
+  }
+
+  .ef-collapse__inner {
+    transition: none !important;
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -840,6 +867,56 @@ html[data-theme='dark'] ::-webkit-scrollbar-thumb:active {
   background: rgba(154, 166, 195, 0.8) !important;
 }
 
+/* ============================================
+   全局滚动条样式（WebView2/Chromium）
+   说明：由于历史误写 `:::`，这里用 `*::-webkit-scrollbar` 强制覆盖生效
+   ============================================ */
+
+*::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.5) !important;
+  border-radius: 2px !important;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 136, 136, 0.7) !important;
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: rgba(136, 136, 136, 0.9) !important;
+}
+
+/* 去掉滚动条上下箭头 */
+*::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb {
+  background: rgba(154, 166, 195, 0.4) !important;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(154, 166, 195, 0.6) !important;
+}
+
+html[data-theme='dark'] *::-webkit-scrollbar-thumb:active {
+  background: rgba(154, 166, 195, 0.8) !important;
+}
+
 /* Firefox 滚动条 */
 * {
   scrollbar-width: thin;
@@ -1157,4 +1234,54 @@ html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[
 .ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-arrow {
   opacity: 0;
   pointer-events: none;
+}
+
+/* ============================================
+   全局滚动条样式（WebView2/Chromium）
+   修复：之前误写成 :::
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.5) !important;
+  border-radius: 2px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 136, 136, 0.7) !important;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(136, 136, 136, 0.9) !important;
+}
+
+/* 去掉滚动条上下箭头 */
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(154, 166, 195, 0.4) !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(154, 166, 195, 0.6) !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:active {
+  background: rgba(154, 166, 195, 0.8) !important;
 }

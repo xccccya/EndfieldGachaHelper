@@ -101,63 +101,78 @@ export function AccountPage() {
         type="button"
         onClick={toggleProvider}
         aria-pressed={isGryphline}
+        title={isGryphline ? '切换至鹰角网络（国服）' : '切换至 GRYPHLINE（国际服）'}
         className={`
           group inline-flex items-center gap-2
           rounded-full
           px-2.5 py-1.5
-          bg-bg-3/85 hover:bg-bg-3
-          dark:bg-bg-2/70 dark:hover:bg-bg-2/95
           backdrop-blur-sm
-          shadow-md
-          shadow-black/5 dark:shadow-black/30
           transition-all duration-200
-          hover:shadow-lg
-          focus:outline-none focus:ring-2 focus:ring-brand/35 dark:focus:ring-brand/45
-          active:scale-[0.985]
+          hover:shadow-lg hover:scale-[1.01]
+          focus:outline-none focus:ring-2
+          active:scale-[0.98]
+          ${isGryphline 
+            ? 'bg-sky-500/20 hover:bg-sky-500/30 dark:bg-sky-400/25 dark:hover:bg-sky-400/35 border-[1.5px] border-sky-400/45 hover:border-sky-400/65 focus:ring-sky-400/50 shadow-md shadow-sky-500/15'
+            : 'bg-yellow-500/20 hover:bg-yellow-500/30 dark:bg-yellow-400/25 dark:hover:bg-yellow-400/35 border-[1.5px] border-yellow-500/45 hover:border-yellow-500/65 focus:ring-yellow-500/50 shadow-md shadow-yellow-500/15'
+          }
           ${className}
         `}
       >
+        {/* 服务器图标 */}
+        <Server 
+          size={14} 
+          className={`
+            shrink-0 transition-all duration-200 group-hover:scale-110
+            ${isGryphline ? 'text-sky-400 dark:text-sky-300' : 'text-yellow-500 dark:text-yellow-400'}
+          `}
+        />
+        
         <span
           className={`
-            text-xs font-semibold whitespace-nowrap select-none
-            ${isGryphline ? 'text-sky-400 dark:text-sky-300' : 'text-brand'}
+            text-xs font-bold whitespace-nowrap select-none
+            transition-colors duration-200
+            ${isGryphline 
+              ? 'text-sky-500 dark:text-sky-300' 
+              : 'text-yellow-600 dark:text-yellow-400'}
           `}
         >
-          {t('account.useProvider', { providerName })}
+          {providerName}
         </span>
+        
         <span
           className={`
             relative inline-flex h-5 w-9 items-center rounded-full
             shadow-inner
             transition-colors duration-250 ease-out
             ${isGryphline
-              ? 'bg-sky-500/25 dark:bg-sky-400/20'
-              : 'bg-brand/28 dark:bg-brand/22'}
+              ? 'bg-sky-500/35 dark:bg-sky-400/30'
+              : 'bg-yellow-500/35 dark:bg-yellow-400/30'}
           `}
         >
-          {/* 轻微高光层（随 hover 更明显） */}
+          {/* 高光层 */}
           <span
             className={`
               pointer-events-none absolute inset-0 rounded-full
-              bg-gradient-to-b from-white/20 to-transparent
-              opacity-70 group-hover:opacity-95
+              bg-gradient-to-b from-white/25 to-transparent
+              opacity-80 group-hover:opacity-100
               transition-opacity duration-200
             `}
           />
+          {/* 滑动圆点 */}
           <span
             className={`
-              absolute left-0.5 top-0.5 h-4 w-4 rounded-full shadow
+              absolute left-0.5 top-0.5 h-4 w-4 rounded-full shadow-lg
               transition-all duration-250 ease-out
               group-active:scale-95
               ${isGryphline
-                ? 'translate-x-4 bg-sky-400 dark:bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.28)]'
-                : 'translate-x-0 bg-brand shadow-[0_0_10px_rgba(255,250,0,0.25)]'}
+                ? 'translate-x-4 bg-sky-400 dark:bg-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.45)]'
+                : 'translate-x-0 bg-yellow-500 dark:bg-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.45)]'}
             `}
           />
         </span>
       </button>
     );
-  }, [provider, providerName, t, toggleProvider]);
+  }, [provider, providerName, toggleProvider]);
 
   const handleRemoveAccount = useCallback((uid: string) => {
     setDeleteUid(uid);
@@ -452,7 +467,7 @@ export function AccountPage() {
                   className={`
                     group flex items-center gap-4 p-4 rounded-md border transition-all cursor-pointer
                     ${activeUid === account.uid 
-                      ? 'border-brand bg-brand/5 shadow-[0_0_0_1px_rgba(255,250,0,0.2)]' 
+                      ? 'border-yellow-400/50 bg-gradient-to-br from-yellow-500/8 to-yellow-600/5 shadow-lg shadow-yellow-500/10' 
                       : 'border-border bg-bg-2 hover:border-fg-2/30 hover:bg-bg-2/80'
                     }
                   `}
@@ -462,7 +477,7 @@ export function AccountPage() {
                   <div className={`
                     w-14 h-14 rounded-md flex items-center justify-center text-xl font-bold transition-all
                     ${activeUid === account.uid 
-                      ? 'bg-brand text-black shadow-lg shadow-brand/20' 
+                      ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-black shadow-[0_0_20px_rgba(250,204,21,0.4),0_0_40px_rgba(250,204,21,0.15)] ring-2 ring-yellow-400/30' 
                       : 'bg-fg-2/10 text-fg-1 group-hover:bg-fg-2/20'
                     }
                   `}>

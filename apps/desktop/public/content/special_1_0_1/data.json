@@ -1,0 +1,146 @@
+{
+    "code": 0,
+    "data": {
+        "pool": {
+            "pool_gacha_type": "char",
+            "pool_name": "熔火灼痕",
+            "pool_type": "special",
+            "up6_name": "莱万汀",
+            "up6_image": "https://web.hycdn.cn/upload/image/20260109/63d80a250a50a5ce2affa145c7c6dca5.png",
+            "up5_name": "",
+            "up5_image": "",
+            "up6_item_name": "莱万汀的信物",
+            "rotate_image": "https://web.hycdn.cn/upload/image/20260109/da81a738dacad066cae94f0963850bb1.png",
+            "ticket_name": "行火留烬寻访凭证",
+            "ticket_ten_name": "行火留烬十连凭证",
+            "all": [
+                {
+                    "id": "chr_0016_laevat",
+                    "name": "莱万汀",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0013_aglina",
+                    "name": "洁尔佩塔",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0017_yvonne",
+                    "name": "伊冯",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0009_azrila",
+                    "name": "余烬",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0015_lifeng",
+                    "name": "黎风",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0025_ardelia",
+                    "name": "艾尔黛拉",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0026_lastrite",
+                    "name": "别礼",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0029_pograni",
+                    "name": "骏卫",
+                    "rarity": 6
+                },
+                {
+                    "id": "chr_0004_pelica",
+                    "name": "佩丽卡",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0007_ikut",
+                    "name": "弧光",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0012_avywen",
+                    "name": "艾维文娜",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0018_dapan",
+                    "name": "大潘",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0005_chen",
+                    "name": "陈千语",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0006_wolfgd",
+                    "name": "狼卫",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0011_seraph",
+                    "name": "赛希",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0014_aurora",
+                    "name": "昼雪",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0024_deepfin",
+                    "name": "阿列什",
+                    "rarity": 5
+                },
+                {
+                    "id": "chr_0019_karin",
+                    "name": "秋栗",
+                    "rarity": 4
+                },
+                {
+                    "id": "chr_0020_meurs",
+                    "name": "卡契尔",
+                    "rarity": 4
+                },
+                {
+                    "id": "chr_0021_whiten",
+                    "name": "埃特拉",
+                    "rarity": 4
+                },
+                {
+                    "id": "chr_0022_bounda",
+                    "name": "萤石",
+                    "rarity": 4
+                },
+                {
+                    "id": "chr_0023_antal",
+                    "name": "安塔尔",
+                    "rarity": 4
+                }
+            ],
+            "rotate_list": [
+                {
+                    "name": "莱万汀",
+                    "times": 3
+                },
+                {
+                    "name": "洁尔佩塔",
+                    "times": 4
+                },
+                {
+                    "name": "伊冯",
+                    "times": 5
+                }
+            ]
+        },
+        "timezone": 8
+    },
+    "msg": ""
+}

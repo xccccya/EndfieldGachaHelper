@@ -42,7 +42,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { path: '/stats', labelKey: 'nav.stats', icon: <BarChart3 size={20} /> },
-  { path: '/', labelKey: 'nav.records', icon: <History size={20} /> },
+  { path: '/records', labelKey: 'nav.records', icon: <History size={20} /> },
   { path: '/sync', labelKey: 'nav.sync', icon: <RefreshCw size={20} /> },
   { path: '/account', labelKey: 'nav.account', icon: <UserPlus size={20} /> },
   { path: '/cloud-sync', labelKey: 'nav.cloudSync', icon: <Cloud size={20} /> },
@@ -73,6 +73,7 @@ export function MainLayout() {
 
   // 获取当前页面标题
   const getCurrentTitle = () => {
+    if (location.pathname === '/') return t('nav.stats');
     const path = location.pathname.slice(1) || 'records';
     // 将路径格式 (cloud-sync) 转换为 i18n key 格式 (cloudSync)
     const navKey = path.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());

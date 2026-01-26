@@ -11,3 +11,7 @@ export { SyncAuthModal } from './SyncAuthModal';
 export { LegalModal } from './LegalModal';
 export { ParticleBackground } from './ParticleBackground';
 export { PageTransition } from './PageTransition';
+export { CharacterAvatar } from './CharacterAvatar';
+export { WeaponAvatar } from './WeaponAvatar';
+export { PityStatusPanel } from './PityStatusPanel';
+export { HelpTooltip } from './HelpTooltip';

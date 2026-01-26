@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
 import { RecordsPage, SyncPage, StatsPage, AccountPage, SettingsPage, CloudSyncPage, AboutPage, TrayMenuPage } from './pages';
 
@@ -11,7 +11,9 @@ export default function App() {
         
         {/* 主应用路由 */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<RecordsPage />} />
+          {/* 默认页：数据统计 */}
+          <Route index element={<Navigate to="/stats" replace />} />
+          <Route path="/records" element={<RecordsPage />} />
           <Route path="/sync" element={<SyncPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/account" element={<AccountPage />} />
