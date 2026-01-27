@@ -373,7 +373,7 @@ export function SettingsPage() {
                   variant="secondary"
                   onClick={handleImportJSON}
                   icon={<Upload size={18} />}
-                  className="flex-1 border border-brand/25 hover:border-brand/45 hover:bg-bg-3/80"
+                  className="flex-1"
                 >
                   {t('settings.importJSON')}
                 </Button>
@@ -400,7 +400,7 @@ export function SettingsPage() {
                   variant="secondary"
                   onClick={handleImportCSV}
                   icon={<Upload size={18} />}
-                  className="flex-1 border border-brand/25 hover:border-brand/45 hover:bg-bg-3/80"
+                  className="flex-1"
                 >
                   {t('settings.importCSV')}
                 </Button>

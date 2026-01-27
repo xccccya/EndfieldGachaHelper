@@ -145,6 +145,7 @@ function clearSyncConfig(errorMessage?: string): void {
       refreshToken: null,
       autoSync: false,
       lastSyncAt: null,
+      lastCheckedAt: null,
       syncError: errorMessage ?? null,
     }));
     window.dispatchEvent(new CustomEvent('efgh:sync_change'));

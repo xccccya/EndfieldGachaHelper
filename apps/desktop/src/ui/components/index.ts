@@ -15,3 +15,5 @@ export { CharacterAvatar } from './CharacterAvatar';
 export { WeaponAvatar } from './WeaponAvatar';
 export { PityStatusPanel } from './PityStatusPanel';
 export { HelpTooltip } from './HelpTooltip';
+export { UpdateToast } from './UpdateToast';
+export { InteractionLockOverlay } from './InteractionLockOverlay';

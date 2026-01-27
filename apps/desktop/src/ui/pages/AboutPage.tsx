@@ -3,7 +3,7 @@
  * 显示应用版本、开源声明、许可证等信息
  */
 
-import { useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Info,
@@ -18,8 +18,9 @@ import {
   Download,
   Heart,
   Github,
+  Clock,
 } from 'lucide-react';
-import { useUpdater } from '../../hooks/useUpdater';
+import { useUpdate } from '../../hooks/update';
 import { useAppInfo } from '../../hooks/useAppInfo';
 import { Card, CardHeader, CardContent, Button, Badge, LegalModal } from '../components';
 
@@ -54,10 +55,30 @@ export function AboutPage() {
     updateInfo, 
     progress: updateProgress, 
     error: updateError,
+    lastCheckedAt,
+    nextAutoCheckAt,
     checkForUpdate, 
     downloadAndInstall, 
     restartApp 
-  } = useUpdater();
+  } = useUpdate();
+
+  const lastCheckedLabel = useMemo(() => {
+    if (!lastCheckedAt) return t('updater.neverChecked', '未检查');
+    try {
+      return new Date(lastCheckedAt).toLocaleString();
+    } catch {
+      return String(lastCheckedAt);
+    }
+  }, [lastCheckedAt, t]);
+
+  const nextCheckLabel = useMemo(() => {
+    if (!nextAutoCheckAt) return t('updater.unknownNextCheck', '—');
+    try {
+      return new Date(nextAutoCheckAt).toLocaleString();
+    } catch {
+      return String(nextAutoCheckAt);
+    }
+  }, [nextAutoCheckAt, t]);
   
   // 打开协议弹窗
   const openLegalModal = useCallback((tab: 'terms' | 'privacy') => {
@@ -128,107 +149,199 @@ export function AboutPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="p-4 rounded-lg bg-bg-2/80 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-fg-2">{t('settings.version')}</span>
-                <Badge variant="version">v{version}</Badge>
+          <div className="rounded-lg border border-border bg-bg-2/70 overflow-hidden">
+            {/* 顶部信息条：版本 + 操作 */}
+            <div className="px-4 py-3 border-b border-border bg-bg-3/30">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-fg-2 text-sm shrink-0">{t('settings.version', '版本')}</span>
+                  <Badge variant="version">v{version}</Badge>
+                  <span className="text-xs text-fg-2/70 truncate">{t('updater.autoCheckEnabled', '自动检查：已启用')}</span>
+                </div>
+
+                {/* 右侧动作：根据状态展示按钮/状态 */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {(updateStatus === 'idle' || updateStatus === 'not-available' || updateStatus === 'error') && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void checkForUpdate('manual');
+                      }}
+                      icon={<RefreshCw size={14} />}
+                    >
+                      {t('settings.checkUpdate', '检查更新')}
+                    </Button>
+                  )}
+                  {updateStatus === 'checking' && (
+                    <div className="flex items-center gap-2 text-fg-2 text-sm px-3 py-2 rounded-md bg-bg-1/40 border border-border/50">
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>{t('settings.checking', '检查中...')}</span>
+                    </div>
+                  )}
+                  {updateStatus === 'downloading' && (
+                    <div className="flex items-center gap-2 text-fg-2 text-sm px-3 py-2 rounded-md bg-bg-1/40 border border-border/50">
+                      <Download size={14} className="text-brand" />
+                      <span>{t('settings.downloading', '下载中...')}</span>
+                    </div>
+                  )}
+                  {updateStatus === 'ready' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        void restartApp();
+                      }}
+                      icon={<RefreshCw size={14} />}
+                    >
+                      {t('settings.restartNow', '立即重启')}
+                    </Button>
+                  )}
+                </div>
               </div>
-              
-              {/* 检查更新按钮 */}
-              {(updateStatus === 'idle' || updateStatus === 'not-available' || updateStatus === 'error') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { void checkForUpdate(); }}
-                  className="text-brand hover:bg-brand/10"
-                  icon={<RefreshCw size={14} />}
-                >
-                  {t('settings.checkUpdate', '检查更新')}
-                </Button>
+
+              {/* 时间信息：更像“元信息 chips”，不挤占主区域 */}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-1">
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-1/30 border border-border/40">
+                  <Clock size={12} className="text-fg-2" />
+                  {t('updater.lastChecked', '上次检查')}: <span className="text-fg-0">{lastCheckedLabel}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-1/30 border border-border/40">
+                  <Clock size={12} className="text-fg-2" />
+                  {t('updater.nextCheck', '下次检查')}: <span className="text-fg-0">{nextCheckLabel}</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {/* 已是最新 */}
+              {updateStatus === 'not-available' && (
+                <div className="flex items-center justify-between gap-3 text-green-400 text-sm p-3 rounded-md bg-green-500/10 border border-green-500/20">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} />
+                    <span>{t('settings.upToDate', '已是最新版本')}</span>
+                  </div>
+                </div>
               )}
-              {updateStatus === 'checking' && (
-                <div className="flex items-center gap-2 text-fg-2 text-sm">
-                  <Loader2 size={14} className="animate-spin" />
-                  <span>{t('settings.checking', '检查中...')}</span>
+
+              {/* 出错 */}
+              {updateStatus === 'error' && updateError && (
+                <div className="flex items-start justify-between gap-3 text-red-400 text-sm p-3 rounded-md bg-red-500/10 border border-red-500/20">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <span className="break-words text-fg-0/90">{updateError}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void checkForUpdate('manual');
+                    }}
+                    className="text-red-300 hover:bg-red-500/10 border border-red-500/20"
+                    icon={<RefreshCw size={14} />}
+                  >
+                    {t('common.retry', '重试')}
+                  </Button>
+                </div>
+              )}
+
+              {/* 有新版本可用 */}
+              {updateStatus === 'available' && updateInfo && (
+                <div className="rounded-md border border-brand/25 bg-brand/10 overflow-hidden">
+                  <div className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 text-brand">
+                        <Sparkles size={14} />
+                        <span className="font-semibold">
+                          {t('settings.newVersion', '发现新版本')}: v{updateInfo.version}
+                        </span>
+                      </div>
+                      {updateInfo.date ? <span className="text-xs text-fg-2">{updateInfo.date}</span> : null}
+                    </div>
+                    {updateInfo.body ? (
+                      <div className="mt-2 rounded-md bg-bg-3/50 border border-border/60 p-3 text-xs text-fg-1 max-h-48 overflow-y-auto">
+                        <div className="font-medium text-fg-0 mb-1">{t('settings.updateNotes', '更新说明')}</div>
+                        <div className="whitespace-pre-wrap">{updateInfo.body}</div>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            void downloadAndInstall();
+                          }}
+                          icon={<Download size={14} />}
+                        >
+                          {t('settings.downloadUpdate', '下载更新')}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            void checkForUpdate('manual');
+                          }}
+                          icon={<RefreshCw size={14} />}
+                        >
+                          {t('updater.recheck', '重新检查')}
+                        </Button>
+                      </div>
+                      <span className="text-xs text-fg-2">{t('updater.downloadHint', '下载完成后将提示重启')}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 下载中 */}
+              {updateStatus === 'downloading' && (
+                <div className="rounded-md border border-border/60 bg-bg-1/40 p-3">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-fg-2">{t('settings.downloading', '下载中...')}</span>
+                    <span className="text-brand font-medium">{updateProgress}%</span>
+                  </div>
+                  <div className="h-2 bg-bg-3 rounded-sm overflow-hidden">
+                    <div
+                      className="h-full bg-brand rounded-sm transition-all duration-300"
+                      style={{ width: `${updateProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 准备重启 */}
+              {updateStatus === 'ready' && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-400 text-sm p-3 rounded-md bg-green-500/10 border border-green-500/20">
+                    <CheckCircle2 size={14} />
+                    <span>{t('settings.downloadComplete', '下载完成，重启以完成更新')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        void restartApp();
+                      }}
+                      icon={<RefreshCw size={14} />}
+                    >
+                      {t('settings.restartNow', '立即重启')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        void checkForUpdate('manual');
+                      }}
+                      icon={<RefreshCw size={14} />}
+                    >
+                      {t('updater.recheck', '重新检查')}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
-            
-            {/* 更新状态显示 */}
-            {updateStatus === 'not-available' && (
-              <div className="flex items-center gap-2 text-green-400 text-sm p-3 rounded-md bg-green-500/10">
-                <CheckCircle2 size={14} />
-                <span>{t('settings.upToDate', '已是最新版本')}</span>
-              </div>
-            )}
-            
-            {updateStatus === 'error' && updateError && (
-              <div className="flex items-center gap-2 text-red-400 text-sm p-3 rounded-md bg-red-500/10">
-                <AlertCircle size={14} />
-                <span>{updateError}</span>
-              </div>
-            )}
-            
-            {/* 有新版本可用 */}
-            {updateStatus === 'available' && updateInfo && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-brand p-3 rounded-md bg-brand/10">
-                  <Sparkles size={14} />
-                  <span className="font-medium">
-                    {t('settings.newVersion', '发现新版本')}: v{updateInfo.version}
-                  </span>
-                </div>
-                {updateInfo.body && (
-                  <div className="p-3 rounded-md bg-bg-3 text-fg-2 text-xs max-h-32 overflow-y-auto">
-                    <div className="font-medium text-fg-1 mb-1">{t('settings.updateNotes', '更新说明')}:</div>
-                    <div className="whitespace-pre-wrap">{updateInfo.body}</div>
-                  </div>
-                )}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => { void downloadAndInstall(); }}
-                  icon={<Download size={14} />}
-                >
-                  {t('settings.downloadUpdate', '下载更新')}
-                </Button>
-              </div>
-            )}
-            
-            {/* 下载中 */}
-            {updateStatus === 'downloading' && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-fg-2">{t('settings.downloading', '下载中...')}</span>
-                  <span className="text-brand font-medium">{updateProgress}%</span>
-                </div>
-                <div className="h-2 bg-bg-3 rounded-sm overflow-hidden">
-                  <div 
-                    className="h-full bg-brand rounded-sm transition-all duration-300"
-                    style={{ width: `${updateProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* 准备重启 */}
-            {updateStatus === 'ready' && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-green-400 p-3 rounded-md bg-green-500/10">
-                  <CheckCircle2 size={14} />
-                  <span>{t('settings.downloadComplete', '下载完成，重启以完成更新')}</span>
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => { void restartApp(); }}
-                  icon={<RefreshCw size={14} />}
-                >
-                  {t('settings.restartNow', '立即重启')}
-                </Button>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

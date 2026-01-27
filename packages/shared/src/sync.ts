@@ -52,7 +52,18 @@ export type SyncConfig = {
   accessToken: string | null;
   refreshToken: string | null;
   autoSync: boolean;
-  lastSyncAt: string | null;  // ISO string
+  /**
+   * 最近一次“确实产生变化”的同步时间（ISO string）。
+   * 变化的定义：本轮同步中有新增上传到云端，或从云端下载并落库到本地。
+   *
+   * 说明：用于 UI 展示“上次同步”，避免“无变化也刷新时间”导致用户误解。
+   */
+  lastSyncAt: string | null;
+  /**
+   * 最近一次“成功完成同步流程”的时间（ISO string），即使本轮无数据变化也会更新。
+   * 用于增量边界推进（避免一直用很旧的时间重复筛选/重复上传）。
+   */
+  lastCheckedAt: string | null;
   syncError: string | null;
 };
 
@@ -63,6 +74,7 @@ export const DEFAULT_SYNC_CONFIG: SyncConfig = {
   refreshToken: null,
   autoSync: false,
   lastSyncAt: null,
+  lastCheckedAt: null,
   syncError: null,
 };
 

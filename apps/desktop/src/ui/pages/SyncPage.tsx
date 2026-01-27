@@ -11,6 +11,7 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
+  XCircle,
   Loader2,
   User,
   Database,
@@ -29,8 +30,8 @@ const POOL_TYPE_NAMES: Record<string, string> = {
   'E_CharacterGachaPoolType_Standard': '角色常驻池',
   'E_CharacterGachaPoolType_Beginner': '角色新手池',
   // 武器池
-  'E_WeaponGachaPoolType_Special': '武器限定池',
-  'E_WeaponGachaPoolType_Standard': '武器常驻池',
+  // 注：当前实现使用统一武器池 'E_WeaponGachaPoolType_All'
+  'E_WeaponGachaPoolType_All': '武器池',
 };
 
 /** 类别名称 */
@@ -218,6 +219,22 @@ export function SyncPage() {
                 </div>
                 <Button variant="ghost" size="sm" onClick={reset}>
                   {t('common.retry')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* 取消状态 */}
+          {progress.status === 'cancelled' && (
+            <div className="p-4 rounded-md bg-bg-2 border border-border mb-4">
+              <div className="flex items-center gap-3">
+                <XCircle size={20} className="text-fg-1" />
+                <div className="flex-1">
+                  <div className="font-medium text-fg-0">{t('sync.cancelled')}</div>
+                  <div className="text-sm text-fg-2">{t('sync.cancelledDesc')}</div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={reset}>
+                  {t('common.dismiss')}
                 </Button>
               </div>
             </div>

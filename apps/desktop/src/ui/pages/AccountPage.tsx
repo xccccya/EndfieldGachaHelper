@@ -279,7 +279,6 @@ export function AccountPage() {
                   ref={tokenHelpButtonRef}
                   onClick={() => setTokenHelpOpen((v) => !v)}
                   icon={<Info size={20} />}
-                  className="border border-brand/25 hover:border-brand/45 hover:bg-bg-3/80"
                 >
                   {t('account.howToGetToken')}
                 </Button>

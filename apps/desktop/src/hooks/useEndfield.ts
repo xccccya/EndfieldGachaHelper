@@ -2,7 +2,7 @@
  * Endfield API React Hooks
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { 
   BindingAccount, 
   EndFieldCharPoolType, 
@@ -43,9 +43,10 @@ import {
   type GachaRecord,
   type WeaponRecord,
 } from '../lib/storage';
+import { lockInteraction, unlockInteractionLock, updateInteractionLock } from './useInteractionLock';
 
 export type SyncProgress = {
-  status: 'idle' | 'authenticating' | 'fetching_bindings' | 'fetching_records' | 'done' | 'error';
+  status: 'idle' | 'authenticating' | 'fetching_bindings' | 'fetching_records' | 'done' | 'cancelled' | 'error';
   /** 当前同步的类别 */
   category?: GachaCategory;
   /** 当前同步的卡池类型 */
@@ -211,14 +212,6 @@ async function buildExistingWeaponSeqIds(uid: string): Promise<Set<string>> {
  */
 const TOTAL_POOLS = END_FIELD_CHAR_POOL_TYPES.length + 1; // 3 + 1 = 4
 
-/** 卡池类型显示名称映射 */
-const POOL_TYPE_NAMES: Record<string, string> = {
-  'E_CharacterGachaPoolType_Special': '限定池',
-  'E_CharacterGachaPoolType_Standard': '常驻池',
-  'E_CharacterGachaPoolType_Beginner': '新手池',
-  'E_WeaponGachaPoolType_All': '武器池',
-};
-
 /**
  * 抽卡记录同步 Hook
  * 同步四个卡池：限定池、常驻池、新手池、武器池
@@ -227,10 +220,33 @@ const POOL_TYPE_NAMES: Record<string, string> = {
  */
 export function useGachaSync() {
   const [progress, setProgress] = useState<SyncProgress>({ status: 'idle' });
+  const abortRef = useRef<AbortController | null>(null);
 
   const syncRecords = useCallback(async (uid: string): Promise<number> => {
     let charAdded = 0;
     let weaponAdded = 0;
+    if (abortRef.current && !abortRef.current.signal.aborted) {
+      // 已在同步中：直接忽略重复触发，避免静默抛错
+      return 0;
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    lockInteraction({
+      titleKey: 'sync.lockTitle',
+      title: '正在同步抽卡记录',
+      cancelLabelKey: 'sync.cancelSync',
+      cancelLabel: '取消同步',
+      cancelling: false,
+      onCancel: () => {
+        updateInteractionLock({ cancelling: true });
+        try {
+          controller.abort();
+        } catch {
+          // ignore
+        }
+      },
+    });
 
     try {
       const accounts = await getAccounts();
@@ -259,7 +275,7 @@ export function useGachaSync() {
 
       // 1. 获取 u8_token
       setProgress({ status: 'authenticating' });
-      const u8Token = await fetchU8TokenByUid(hgUid, appToken, options);
+      const u8Token = await fetchU8TokenByUid(hgUid, appToken, { ...options, signal: controller.signal });
 
       // 2. 构建已存在记录的 seqId 集合（用于增量同步）
       const existingCharSeqIdsByPool = await buildExistingCharSeqIdsByPool(uid);
@@ -276,6 +292,7 @@ export function useGachaSync() {
 
       const allRecords = await fetchAllGachaRecords(u8Token, {
         ...options,
+        signal: controller.signal,
         // 分页请求延迟（防风控）
         minDelayMs: 800,
         maxDelayMs: 1500,
@@ -293,12 +310,11 @@ export function useGachaSync() {
         onProgress: (category, poolType, poolIndex, _totalPools, recordsFetched) => {
           // 计算总进度：角色池 3 个 + 武器池 1 个
           const currentPoolIndex = category === 'weapon' ? END_FIELD_CHAR_POOL_TYPES.length + 1 : poolIndex;
-          const poolName = POOL_TYPE_NAMES[poolType] || poolType;
           
           setProgress({
             status: 'fetching_records',
             category,
-            poolType: poolName,
+            poolType,
             poolIndex: currentPoolIndex,
             totalPools: TOTAL_POOLS,
             charRecordsFetched: category === 'character' ? recordsFetched : charAdded,
@@ -334,6 +350,13 @@ export function useGachaSync() {
       return totalAdded;
     } catch (err) {
       console.error('[useGachaSync] Sync error:', err);
+      const isAbort =
+        (err instanceof Error && (err.name === 'AbortError' || err.message === 'Aborted')) ||
+        controller.signal.aborted;
+      if (isAbort) {
+        setProgress({ status: 'cancelled' });
+        throw err;
+      }
       let message = '同步失败';
       if (err instanceof Error) {
         if (err instanceof EndfieldRiskControlError) {
@@ -354,6 +377,9 @@ export function useGachaSync() {
       }
       setProgress({ status: 'error', error: message });
       throw err;
+    } finally {
+      abortRef.current = null;
+      unlockInteractionLock();
     }
   }, []);
 
@@ -364,6 +390,16 @@ export function useGachaSync() {
   return {
     progress,
     syncRecords,
+    cancelSync: () => {
+      const c = abortRef.current;
+      if (!c || c.signal.aborted) return;
+      updateInteractionLock({ cancelling: true });
+      try {
+        c.abort();
+      } catch {
+        // ignore
+      }
+    },
     reset,
   };
 }

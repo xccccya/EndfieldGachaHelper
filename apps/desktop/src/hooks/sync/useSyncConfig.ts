@@ -24,6 +24,7 @@ export function useSyncConfig() {
     isLoggedIn: !!config.user && !!config.accessToken,
     autoSync: config.autoSync,
     lastSyncAt: config.lastSyncAt,
+    lastCheckedAt: config.lastCheckedAt,
     syncError: config.syncError,
   };
 }

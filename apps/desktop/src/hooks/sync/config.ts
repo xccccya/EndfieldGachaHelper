@@ -97,7 +97,9 @@ export function getSyncConfig(): SyncConfig {
       return syncConfigCache;
     }
     if (raw) {
-      syncConfigCache = JSON.parse(raw) as SyncConfig;
+      const parsed = JSON.parse(raw) as Partial<SyncConfig>;
+      // 兼容旧版本：补齐新增字段（如 lastCheckedAt），并避免缺字段导致逻辑分支异常
+      syncConfigCache = { ...DEFAULT_SYNC_CONFIG, ...parsed };
       syncConfigCacheRaw = raw;
       return syncConfigCache;
     }

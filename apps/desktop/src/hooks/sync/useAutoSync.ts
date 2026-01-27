@@ -6,10 +6,11 @@
  * 3. 定时拉取云端最新数据
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AUTO_SYNC_INTERVAL, DATA_CHANGE_EVENT } from './config';
+import { useCallback, useEffect, useRef } from 'react';
+import { AUTO_SYNC_INTERVAL } from './config';
 import { useSyncConfig } from './useSyncConfig';
 import { useSyncAuth } from './useSyncAuth';
+import { subscribeStorageChange } from '../../lib/storage';
 
 /**
  * 自动同步 Hook
@@ -17,9 +18,9 @@ import { useSyncAuth } from './useSyncAuth';
 export function useAutoSync() {
   const { isLoggedIn, autoSync } = useSyncConfig();
   const { manualSync, loading } = useSyncAuth();
-  const [lastAutoSyncAt, setLastAutoSyncAt] = useState<string | null>(null);
   const syncInProgressRef = useRef(false);
   const initialSyncDoneRef = useRef(false);
+  const lastAutoSyncAtRef = useRef<string | null>(null);
 
   // 执行自动同步（带去重保护）
   const doAutoSync = useCallback(async () => {
@@ -32,7 +33,8 @@ export function useAutoSync() {
       console.log('[AutoSync] 开始自动同步...');
       const result = await manualSync();
       if (result.success) {
-        setLastAutoSyncAt(new Date().toISOString());
+        // 仅用于调试/观测，不触发组件重渲染（避免在云同步页“看起来一直刷新”）
+        lastAutoSyncAtRef.current = new Date().toISOString();
         console.log('[AutoSync] 同步完成', result);
       } else {
         console.warn('[AutoSync] 同步失败');
@@ -78,7 +80,7 @@ export function useAutoSync() {
     // 使用防抖 timer，避免频繁触发同步
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const handleDataChange = () => {
+    const handleLocalDataChange = () => {
       // 清除之前的 timer，实现防抖效果
       if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -90,9 +92,18 @@ export function useAutoSync() {
       }, 3000);
     };
 
-    window.addEventListener(DATA_CHANGE_EVENT, handleDataChange);
+    // 监听存储变更：本地记录新增/导入/清空等，都应触发一次自动同步。
+    // 但必须忽略云同步自身写入本地触发的事件（reason: 'cloudSync'），避免形成循环。
+    const unsubscribe = subscribeStorageChange((detail) => {
+      if (detail?.reason === 'cloudSync') return;
+      const keys = detail?.keys ?? [];
+      if (!Array.isArray(keys)) return;
+      if (!keys.includes('gachaRecords') && !keys.includes('weaponRecords')) return;
+      handleLocalDataChange();
+    });
+
     return () => {
-      window.removeEventListener(DATA_CHANGE_EVENT, handleDataChange);
+      unsubscribe();
       // 清理 effect 时清除 timer
       if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -101,7 +112,7 @@ export function useAutoSync() {
   }, [isLoggedIn, autoSync, doAutoSync]);
 
   return {
-    lastAutoSyncAt,
+    lastAutoSyncAt: lastAutoSyncAtRef.current,
     syncInProgress: syncInProgressRef.current,
   };
 }

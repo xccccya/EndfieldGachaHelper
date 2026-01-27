@@ -25,24 +25,37 @@ const variantClasses: Record<ButtonVariant, string> = {
     hover:bg-brand/18
     active:bg-brand/22
     border border-brand/35
-    shadow-[0_0_0_1px_rgba(255,250,0,0.10)]
+    shadow-sm shadow-brand/10
+    hover:shadow-md hover:shadow-brand/20
+    active:shadow-sm
+    after:ring-brand/25 hover:after:ring-brand/40
   `,
   secondary: `
     bg-bg-2 text-fg-0 
     hover:bg-bg-3
     active:bg-bg-2
     border border-border
+    hover:border-brand/25
+    shadow-sm shadow-black/5 dark:shadow-black/20
+    hover:shadow-md hover:shadow-black/10 dark:hover:shadow-black/30
+    after:ring-fg-2/10 hover:after:ring-brand/25
   `,
   accent: `
     bg-brand text-accent-btn-text font-semibold
     hover:bg-brand-hover 
     active:bg-brand-active
-    border-l-4 border-yellow-600
+    border border-brand/35
+    border-l-4 border-l-yellow-600
+    shadow-md shadow-brand/25
+    hover:shadow-lg hover:shadow-brand/35
+    active:shadow-md
+    after:ring-white/10 hover:after:ring-white/20
   `,
   ghost: `
     bg-transparent text-fg-1
     hover:bg-bg-2
     active:bg-bg-3
+    after:ring-fg-2/0 hover:after:ring-fg-2/10
   `,
 };
 
@@ -71,11 +84,25 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       className={`
-        relative inline-flex items-center justify-center
-        rounded-md transition-all duration-200 ease-out
+        group relative inline-flex items-center justify-center
+        rounded-md
         font-medium
-        focus:outline-none focus:ring-2 focus:ring-brand/50 focus:ring-offset-2 focus:ring-offset-bg-0
+        outline-none
+        transition-[transform,box-shadow,background-color,border-color,color,opacity] duration-200 ease-out
+        motion-reduce:transition-none
+        hover:-translate-y-[1px]
+        active:translate-y-0 active:scale-[0.99]
+        disabled:hover:translate-y-0 disabled:active:scale-100
+        focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-0
         disabled:opacity-50 disabled:cursor-not-allowed
+        before:content-[''] before:absolute before:inset-0 before:rounded-md before:pointer-events-none
+        before:bg-gradient-to-b before:from-white/18 before:to-transparent
+        before:opacity-0 hover:before:opacity-100
+        before:transition-opacity before:duration-200
+        motion-reduce:before:transition-none
+        after:content-[''] after:absolute after:inset-0 after:rounded-md after:pointer-events-none
+        after:ring-1 after:ring-transparent after:transition-[box-shadow] after:duration-200
+        motion-reduce:after:transition-none
         ${variantClasses[variant]}
         ${sizeClasses[size]}
         ${className}
@@ -85,7 +112,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     >
       {/* 斜纹装饰背景 */}
       <span
-        className="absolute inset-0 opacity-[0.06] pointer-events-none rounded-md"
+        className="absolute inset-0 opacity-[0.06] group-hover:opacity-[0.09] pointer-events-none rounded-md transition-opacity duration-200 motion-reduce:transition-none"
         style={{
           backgroundImage: `linear-gradient(
             -45deg,

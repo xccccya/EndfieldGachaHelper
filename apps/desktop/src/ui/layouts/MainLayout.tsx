@@ -30,9 +30,10 @@ import { setTheme, useTheme } from '../theme';
 import { useAccounts } from '../../hooks/useEndfield';
 import { useSyncConfig, useSyncHealth } from '../../hooks/useSync';
 import { useTray } from '../../hooks/useTray';
-import { TitleBar, ParticleBackground, CloseConfirmModal, PageTransition } from '../components';
+import { TitleBar, ParticleBackground, CloseConfirmModal, PageTransition, UpdateToast, InteractionLockOverlay } from '../components';
 import { formatDistanceToNow } from '../../lib/dateUtils';
 import { getSidebarCollapsed, parseAccountKey, setSidebarCollapsed } from '../../lib/storage';
+import { useUpdate } from '../../hooks/update';
 
 type NavItem = {
   path: string;
@@ -58,6 +59,7 @@ export function MainLayout() {
   const outlet = useOutlet();
   const { activeAccount } = useAccounts();
   const { status, lastSyncAt } = useSyncConfig();
+  const { hasUpdate } = useUpdate();
   useSyncHealth(); // 初始化健康检查
   const [sidebarCollapsed, setSidebarCollapsedState] = useState<boolean>(() => getSidebarCollapsed());
 
@@ -213,6 +215,25 @@ export function MainLayout() {
                 >
                   {t(item.labelKey)}
                 </span>
+                {/* 关于页更新提示 Badge */}
+                {item.path === '/about' && hasUpdate ? (
+                  <span
+                    className={[
+                      'ml-2 inline-flex items-center',
+                      sidebarCollapsed ? 'absolute right-3 top-3' : '',
+                    ].join(' ')}
+                    aria-label={t('updater.badgeAria', '有新版本可用')}
+                    title={t('updater.badgeTitle', '有新版本可用')}
+                  >
+                    {sidebarCollapsed ? (
+                      <span className="w-2 h-2 rounded-full bg-brand shadow-[0_0_0_3px_rgba(0,0,0,0.15)]" />
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30 font-semibold tracking-wide">
+                        {t('updater.badgeText', 'NEW')}
+                      </span>
+                    )}
+                  </span>
+                ) : null}
                 {/* 悬停箭头 */}
                 <ChevronRight 
                   size={14} 
@@ -393,6 +414,12 @@ export function MainLayout() {
           </PageTransition>
         </main>
       </div>
+
+      {/* 全局更新提示（非打断式） */}
+      <UpdateToast />
+
+      {/* 全局交互锁定遮罩（同步等长任务期间） */}
+      <InteractionLockOverlay />
     </div>
   );
 }

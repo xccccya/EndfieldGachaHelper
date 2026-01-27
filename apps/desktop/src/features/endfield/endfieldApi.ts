@@ -69,6 +69,11 @@ export type EndfieldClientOptions = {
    * Default: global fetch
    */
   fetcher?: FetchLike;
+  /**
+   * Optional AbortSignal to cancel/stop long sync.
+   * Note: some custom fetchers may ignore the signal; we still use it to stop pagination and delays.
+   */
+  signal?: AbortSignal;
 };
 
 const DEFAULT_UA =
@@ -91,7 +96,22 @@ function pickOptions(options?: EndfieldClientOptions) {
     provider: options?.provider ?? 'hypergryph',
     userAgent: options?.userAgent ?? DEFAULT_UA,
     fetcher: options?.fetcher ?? fetch,
+    signal: options?.signal,
   };
+}
+
+function makeAbortError(): Error {
+  try {
+    return new DOMException('Aborted', 'AbortError');
+  } catch {
+    const err = new Error('Aborted');
+    (err as Error & { name?: string }).name = 'AbortError';
+    return err;
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) throw makeAbortError();
 }
 
 function is404PageNotFound(text: string): boolean {
@@ -108,16 +128,18 @@ export async function grantAppToken(
   token: string,
   options?: EndfieldClientOptions,
 ): Promise<string> {
-  const { userAgent, fetcher, provider } = pickOptions(options);
+  const { userAgent, fetcher, provider, signal } = pickOptions(options);
 
   const domain = providerToDomain(provider);
   const url = `https://as.${domain}/user/oauth2/v2/grant`;
+  throwIfAborted(signal);
   const res = await fetcher(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'User-Agent': userAgent,
     },
+    ...(signal !== undefined && { signal }),
     body: JSON.stringify({
       type: 1,
       appCode: providerToGrantAppCode(provider),
@@ -125,6 +147,7 @@ export async function grantAppToken(
     }),
   });
 
+  throwIfAborted(signal);
   if (!res.ok) throw new HttpError('grantAppToken failed', res.status, url);
   const json = (await res.json()) as { data?: { token?: string } };
   const appToken = json?.data?.token;
@@ -140,17 +163,20 @@ export async function fetchBindingList(
   appToken: string,
   options?: EndfieldClientOptions,
 ): Promise<UserBindingsResponse> {
-  const { userAgent, fetcher, provider } = pickOptions(options);
+  const { userAgent, fetcher, provider, signal } = pickOptions(options);
   const domain = providerToDomain(provider);
   const base = `https://binding-api-account-prod.${domain}/account/binding/v1/binding_list`;
   const url = `${base}?${new URLSearchParams({ token: appToken, appCode: 'endfield' }).toString()}`;
 
+  throwIfAborted(signal);
   const res = await fetcher(url, {
     method: 'GET',
     headers: {
       'User-Agent': userAgent,
     },
+    ...(signal !== undefined && { signal }),
   });
+  throwIfAborted(signal);
   if (!res.ok) throw new HttpError('fetchBindingList failed', res.status, url);
   return (await res.json()) as UserBindingsResponse;
 }
@@ -164,19 +190,22 @@ export async function fetchU8TokenByUid(
   appToken: string,
   options?: EndfieldClientOptions,
 ): Promise<string> {
-  const { userAgent, fetcher, provider } = pickOptions(options);
+  const { userAgent, fetcher, provider, signal } = pickOptions(options);
   const domain = providerToDomain(provider);
   const url = `https://binding-api-account-prod.${domain}/account/binding/v1/u8_token_by_uid`;
 
+  throwIfAborted(signal);
   const res = await fetcher(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'User-Agent': userAgent,
     },
+    ...(signal !== undefined && { signal }),
     body: JSON.stringify({ uid, token: appToken }),
   });
 
+  throwIfAborted(signal);
   // 注意：这里不要直接 res.json()，因为风控/超限时可能返回非 JSON 文本（例如：404 page not found）
   const text = await res.text();
 
@@ -232,7 +261,7 @@ export async function fetchCharPoolRecords(
   input: FetchCharPoolRecordsInput,
   options?: EndfieldClientOptions,
 ): Promise<FetchCharPoolRecordsResult> {
-  const { lang, serverId, userAgent, fetcher, provider } = pickOptions(options);
+  const { lang, serverId, userAgent, fetcher, provider, signal } = pickOptions(options);
   const domain = providerToDomain(provider);
   const base = `https://ef-webview.${domain}/api/record/char`;
 
@@ -245,7 +274,13 @@ export async function fetchCharPoolRecords(
   if (input.seqId) query.set('seq_id', input.seqId);
 
   const url = `${base}?${query.toString()}`;
-  const res = await fetcher(url, { method: 'GET', headers: { 'User-Agent': userAgent } });
+  throwIfAborted(signal);
+  const res = await fetcher(url, {
+    method: 'GET',
+    headers: { 'User-Agent': userAgent },
+    ...(signal !== undefined && { signal }),
+  });
+  throwIfAborted(signal);
   if (!res.ok) throw new HttpError('fetchCharPoolRecords failed', res.status, url);
 
   const json = (await res.json()) as EndFieldCharGachaResponse;
@@ -286,7 +321,7 @@ export async function fetchWeaponPoolRecords(
   input: FetchWeaponPoolRecordsInput,
   options?: EndfieldClientOptions,
 ): Promise<FetchWeaponPoolRecordsResult> {
-  const { lang, serverId, userAgent, fetcher, provider } = pickOptions(options);
+  const { lang, serverId, userAgent, fetcher, provider, signal } = pickOptions(options);
   const domain = providerToDomain(provider);
   const base = `https://ef-webview.${domain}/api/record/weapon`;
 
@@ -299,7 +334,13 @@ export async function fetchWeaponPoolRecords(
   if (input.seqId) query.set('seq_id', input.seqId);
 
   const url = `${base}?${query.toString()}`;
-  const res = await fetcher(url, { method: 'GET', headers: { 'User-Agent': userAgent } });
+  throwIfAborted(signal);
+  const res = await fetcher(url, {
+    method: 'GET',
+    headers: { 'User-Agent': userAgent },
+    ...(signal !== undefined && { signal }),
+  });
+  throwIfAborted(signal);
   if (!res.ok) throw new HttpError('fetchWeaponPoolRecords failed', res.status, url);
 
   const json = (await res.json()) as EndFieldWeaponGachaResponse;
@@ -327,6 +368,26 @@ export const fetchPoolRecords = fetchCharPoolRecords;
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function sleepAbortable(ms: number, signal?: AbortSignal) {
+  throwIfAborted(signal);
+  if (!signal) {
+    await sleep(ms);
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    let id: number;
+    const onAbort = () => {
+      window.clearTimeout(id);
+      reject(makeAbortError());
+    };
+    id = window.setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
 }
 
 function randomInt(min: number, max: number) {
@@ -372,6 +433,7 @@ export async function fetchAllCharPoolRecords(
   let stoppedEarly = false;
 
   for (;;) {
+    throwIfAborted(options?.signal);
     const page = await fetchCharPoolRecords(
       seqId ? { u8Token, poolType, seqId } : { u8Token, poolType },
       options,
@@ -403,7 +465,7 @@ export async function fetchAllCharPoolRecords(
     if (!page.hasMore) break;
     seqId = page.nextSeqId;
 
-    await sleep(randomInt(minDelayMs, maxDelayMs));
+    await sleepAbortable(randomInt(minDelayMs, maxDelayMs), options?.signal);
   }
 
   return all;
@@ -429,6 +491,7 @@ export async function fetchAllWeaponPoolRecords(
   let stoppedEarly = false;
 
   for (;;) {
+    throwIfAborted(options?.signal);
     const page = await fetchWeaponPoolRecords(
       seqId ? { u8Token, seqId } : { u8Token },
       options,
@@ -460,7 +523,7 @@ export async function fetchAllWeaponPoolRecords(
     if (!page.hasMore) break;
     seqId = page.nextSeqId;
 
-    await sleep(randomInt(minDelayMs, maxDelayMs));
+    await sleepAbortable(randomInt(minDelayMs, maxDelayMs), options?.signal);
   }
 
   return all;
@@ -497,6 +560,7 @@ export async function fetchAllCharPools(
   const result = {} as Record<EndFieldCharPoolType, EndFieldCharInfo[]>;
   
   for (let i = 0; i < END_FIELD_CHAR_POOL_TYPES.length; i++) {
+    throwIfAborted(options?.signal);
     const poolType = END_FIELD_CHAR_POOL_TYPES[i];
     if (!poolType) continue;
     
@@ -518,7 +582,7 @@ export async function fetchAllCharPools(
     onPoolProgress?.(poolType, i + 1, END_FIELD_CHAR_POOL_TYPES.length, records.length);
     
     if (i < END_FIELD_CHAR_POOL_TYPES.length - 1) {
-      await sleep(randomInt(poolSwitchMinDelayMs, poolSwitchMaxDelayMs));
+      await sleepAbortable(randomInt(poolSwitchMinDelayMs, poolSwitchMaxDelayMs), options?.signal);
     }
   }
   
@@ -609,6 +673,7 @@ export async function fetchAllGachaRecords(
     ...(options?.provider !== undefined && { provider: options.provider }),
     ...(options?.userAgent !== undefined && { userAgent: options.userAgent }),
     ...(options?.fetcher !== undefined && { fetcher: options.fetcher }),
+    ...(options?.signal !== undefined && { signal: options.signal }),
   };
   
   // 1. 拉取角色池
@@ -626,7 +691,7 @@ export async function fetchAllGachaRecords(
   const charRecords = await fetchAllCharPools(u8Token, charPoolOptions);
 
   // 类别切换延迟
-  await sleep(categorySwitchDelayMs);
+  await sleepAbortable(categorySwitchDelayMs, options?.signal);
 
   // 2. 拉取武器池
   const weaponPoolOptions: FetchAllWeaponPoolsOptions = {

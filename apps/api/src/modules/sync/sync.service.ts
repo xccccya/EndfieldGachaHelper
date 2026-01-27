@@ -231,7 +231,8 @@ export class SyncService {
       return {
         records: [],
         total: 0,
-        lastSyncAt: new Date().toISOString(),
+        // 若带 since，返回 since 以保持游标语义；否则返回当前时间（仅表示“本次响应时间”）
+        lastSyncAt: since ?? new Date().toISOString(),
       };
     }
 
@@ -239,7 +240,7 @@ export class SyncService {
     const where: {
       gameAccountId: string;
       category?: GachaCategory;
-      createdAt?: { gte: Date };
+      createdAt?: { gt: Date };
     } = {
       gameAccountId: gameAccount.id,
     };
@@ -249,7 +250,8 @@ export class SyncService {
     }
 
     if (since) {
-      where.createdAt = { gte: new Date(since) };
+      // 使用严格大于避免边界重复（客户端本地也会去重，但服务端语义更清晰）
+      where.createdAt = { gt: new Date(since) };
     }
 
     // 查询记录
@@ -275,10 +277,23 @@ export class SyncService {
       weaponType: r.weaponType ?? undefined,
     }));
 
+    const lastSyncAt = (() => {
+      if (records.length === 0) {
+        // 没有新增记录：保持游标不前跳，避免“无变化也更新游标”引发误解/潜在漏数据
+        return since ?? new Date().toISOString();
+      }
+      // 返回本次命中的最大 createdAt 作为游标
+      let max = records[0].createdAt;
+      for (const r of records) {
+        if (r.createdAt > max) max = r.createdAt;
+      }
+      return max.toISOString();
+    })();
+
     return {
       records: cloudRecords,
       total: cloudRecords.length,
-      lastSyncAt: new Date().toISOString(),
+      lastSyncAt,
     };
   }
 

@@ -24,7 +24,6 @@ import {
 import {
   saveSyncConfig,
   updateSyncConfig,
-  notifyDataChange,
   getForceFullDownloadUids,
   clearForceFullDownload,
   ensureLocalAccountExists,
@@ -88,6 +87,7 @@ export function useSyncAuth() {
         refreshToken: result.refreshToken,
         autoSync: false,
         lastSyncAt: null,
+        lastCheckedAt: null,
         syncError: null,
       });
       return true;
@@ -112,6 +112,7 @@ export function useSyncAuth() {
         refreshToken: result.refreshToken,
         autoSync: false,
         lastSyncAt: null,
+        lastCheckedAt: null,
         syncError: null,
       });
       return true;
@@ -181,7 +182,9 @@ export function useSyncAuth() {
   
   // 更新同步时间
   const updateLastSyncAt = useCallback(() => {
-    updateSyncConfig({ lastSyncAt: new Date().toISOString() });
+    const now = new Date().toISOString();
+    // 兼容旧调用：同时推进“检查时间”与“同步时间”
+    updateSyncConfig({ lastSyncAt: now, lastCheckedAt: now });
   }, []);
   
   // 设置同步错误
@@ -218,6 +221,11 @@ export function useSyncAuth() {
     
     // 记录同步开始时间，只有全部成功后才更新 lastSyncAt
     const syncStartTime = new Date().toISOString();
+    // 增量边界：优先使用 lastCheckedAt（即使无变化也推进），兼容旧数据回退到 lastSyncAt
+    const cursorIso = config.lastCheckedAt ?? config.lastSyncAt;
+    const cursorTimestamp = cursorIso ? new Date(cursorIso).getTime() : 0;
+    let anyNewUploadedToCloud = 0;
+    let anyLocalRecordsAdded = 0;
     
     try {
       // 获取本地所有账号
@@ -281,9 +289,7 @@ export function useSyncAuth() {
           const localRecordsEmpty = localGachaRecords.length === 0 && localWeaponRecords.length === 0;
           
           // 增量上传：只上传 fetched_at 大于上次同步时间的记录
-          const lastSyncTimestamp = config.lastSyncAt 
-            ? new Date(config.lastSyncAt).getTime() 
-            : 0;
+          const lastSyncTimestamp = cursorTimestamp;
           
           // 筛选新增的角色记录并按 seqId 去重
           const newGachaRecords = new Map<string, typeof localGachaRecords[0]>();
@@ -326,6 +332,7 @@ export function useSyncAuth() {
             
             // 实际新增的数量 = 总上传数 - 跳过数（已存在的记录）
             const actualNewUploaded = uploadResult.uploaded;
+            anyNewUploadedToCloud += actualNewUploaded;
             const totalSent = uploadedCharCount + uploadedWeaponCount;
             if (totalSent > 0) {
               result.uploaded.characters += Math.round(actualNewUploaded * (uploadedCharCount / totalSent));
@@ -341,7 +348,7 @@ export function useSyncAuth() {
             uid: cloudUid,
             region,
             ...(hgUid ? { hgUid } : {}),
-            ...(config.lastSyncAt && !shouldForceFullDownload ? { since: config.lastSyncAt } : {}),
+            ...(cursorIso && !shouldForceFullDownload ? { since: cursorIso } : {}),
           };
           const downloadResult = await syncApi.downloadRecords(
             config.accessToken,
@@ -360,10 +367,12 @@ export function useSyncAuth() {
           if (downloadedCharRecords.length > 0) {
             const added = await dbSaveGachaRecords(downloadedCharRecords);
             result.downloaded.characters += added;
+            anyLocalRecordsAdded += added;
           }
           if (downloadedWeaponRecords.length > 0) {
             const added = await dbSaveWeaponRecords(downloadedWeaponRecords);
             result.downloaded.weapons += added;
+            anyLocalRecordsAdded += added;
           }
 
           // 若本轮已完成该 uid 的全量下载，则清理一次性标记
@@ -374,16 +383,21 @@ export function useSyncAuth() {
       }
       
       // 只有全部成功后才更新同步时间
-      updateSyncConfig({ 
-        lastSyncAt: syncStartTime,
+      // lastCheckedAt：只要本轮同步成功就推进（避免增量边界长期停滞导致重复筛选/重复上传）
+      // lastSyncAt：仅当本轮确实发生“数据变化”（新增上传到云端 或 新增下载到本地）才更新，用于 UI 展示
+      updateSyncConfig({
+        lastCheckedAt: syncStartTime,
+        ...(anyNewUploadedToCloud > 0 || anyLocalRecordsAdded > 0 ? { lastSyncAt: syncStartTime } : {}),
         syncError: null,
       });
       
       result.success = true;
       
-      // 通知数据变化
-      notifyDataChange();
-      notifyStorageChange({ reason: 'cloudSync', keys: ['gachaRecords', 'weaponRecords'] });
+      // 注意：不要在云同步内部派发 DATA_CHANGE_EVENT，否则会触发 useAutoSync 再次同步，形成循环。
+      // 仅当“本地落库新增”时通知存储变化，用于刷新其他页面展示。
+      if (anyLocalRecordsAdded > 0) {
+        notifyStorageChange({ reason: 'cloudSync', keys: ['gachaRecords', 'weaponRecords'] });
+      }
       
       return result;
     } catch (e) {
@@ -394,7 +408,7 @@ export function useSyncAuth() {
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, config.accessToken, config.lastSyncAt]);
+  }, [isLoggedIn, config.accessToken, config.lastSyncAt, config.lastCheckedAt]);
   
   /**
    * 清理云端重复记录
