@@ -38,24 +38,32 @@ export function UpdateProvider({ children, startupDelayMs = 2500 }: Props) {
       persistLastCheckedAt(Date.now());
       await updater.checkForUpdate();
     },
-    [persistLastCheckedAt, updater]
+    // 注意：不要依赖整个 updater 对象（每次渲染引用都会变），否则会导致定时器反复重置
+    [persistLastCheckedAt, updater.checkForUpdate]
   );
 
-  // 启动自动检查一次
+  /**
+   * 自动检查更新调度：
+   * - 首次启动：若从未检查 / 距离上次检查已超过 12 小时，则延迟 startupDelayMs 后检查一次
+   * - 后续：按 lastCheckedAt + 12h 精准调度下一次检查（避免 setInterval 漂移）
+   *
+   * 这样可以避免因为组件重渲染而反复创建 interval 导致的“不断检查更新”问题。
+   */
   useEffect(() => {
+    const now = Date.now();
+    const dueAt = lastCheckedAt ? lastCheckedAt + TWELVE_HOURS_MS : now;
+    const isDue = now >= dueAt;
+
+    // 如果当前正在检查/下载，就先不触发自动检查；等状态变化后 effect 会重新计算调度
+    if (updater.status === 'checking' || updater.status === 'downloading') return;
+
+    const delay = isDue ? startupDelayMs : Math.max(0, dueAt - now);
     const t = window.setTimeout(() => {
       void checkForUpdate('auto');
-    }, startupDelayMs);
-    return () => window.clearTimeout(t);
-  }, [checkForUpdate, startupDelayMs]);
+    }, delay);
 
-  // 每 12 小时自动检查一次
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      void checkForUpdate('auto');
-    }, TWELVE_HOURS_MS);
-    return () => window.clearInterval(id);
-  }, [checkForUpdate]);
+    return () => window.clearTimeout(t);
+  }, [checkForUpdate, lastCheckedAt, startupDelayMs, updater.status]);
 
   // 有更新时：仅对 auto 检查弹非打断式 toast
   useEffect(() => {
