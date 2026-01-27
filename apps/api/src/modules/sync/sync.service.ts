@@ -283,7 +283,12 @@ export class SyncService {
         return since ?? new Date().toISOString();
       }
       // 返回本次命中的最大 createdAt 作为游标
-      let max = records[0].createdAt;
+      const first = records[0];
+      if (!first) {
+        // TS 严格模式下 records[0] 可能为 undefined（虽然 length>0 理论上不应发生）
+        return since ?? new Date().toISOString();
+      }
+      let max = first.createdAt;
       for (const r of records) {
         if (r.createdAt > max) max = r.createdAt;
       }
