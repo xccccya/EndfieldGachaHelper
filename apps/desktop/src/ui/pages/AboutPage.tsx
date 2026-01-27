@@ -79,6 +79,18 @@ export function AboutPage() {
       return String(nextAutoCheckAt);
     }
   }, [nextAutoCheckAt, t]);
+
+  const updateReleaseDateLabel = useMemo(() => {
+    const raw = updateInfo?.date;
+    if (!raw) return null;
+    try {
+      const d = new Date(raw);
+      if (!Number.isFinite(d.getTime())) return raw;
+      return d.toLocaleString(); // 系统时区时间
+    } catch {
+      return raw;
+    }
+  }, [updateInfo?.date]);
   
   // 打开协议弹窗
   const openLegalModal = useCallback((tab: 'terms' | 'privacy') => {
@@ -106,21 +118,21 @@ export function AboutPage() {
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand/20 to-purple-500/20 p-1 shadow-lg shadow-brand/20 border border-brand/30">
                 <img 
                   src="/icon.png" 
-                  alt="App Icon" 
+                  alt={t('common.appIconAlt')} 
                   className="w-full h-full object-contain rounded-xl"
                 />
               </div>
               
               <div className="flex-1">
                 <h1 className="text-2xl font-bold text-fg-0 mb-1">
-                  Endfield Gacha Helper
+                  {t('app.title')}
                 </h1>
                 <p className="text-fg-2 text-sm mb-3">
                   {t('settings.aboutDesc')}
                 </p>
                 <div className="flex items-center gap-3">
                   <Badge variant="version">v{version}</Badge>
-                  <span className="text-xs text-fg-2">Tauri + React + TypeScript</span>
+                  <span className="text-xs text-fg-2">{t('settings.techValue', 'Tauri + React + TypeScript')}</span>
                 </div>
               </div>
               
@@ -256,7 +268,7 @@ export function AboutPage() {
                           {t('settings.newVersion', '发现新版本')}: v{updateInfo.version}
                         </span>
                       </div>
-                      {updateInfo.date ? <span className="text-xs text-fg-2">{updateInfo.date}</span> : null}
+                      {updateReleaseDateLabel ? <span className="text-xs text-fg-2">{updateReleaseDateLabel}</span> : null}
                     </div>
                     {updateInfo.body ? (
                       <div className="mt-2 rounded-md bg-bg-3/50 border border-border/60 p-3 text-xs text-fg-1 max-h-48 overflow-y-auto">
@@ -288,7 +300,7 @@ export function AboutPage() {
                           {t('updater.recheck', '重新检查')}
                         </Button>
                       </div>
-                      <span className="text-xs text-fg-2">{t('updater.downloadHint', '下载完成后将提示重启')}</span>
+                      <span className="text-xs text-fg-2">{t('updater.downloadHint', '下载完成后将自动重启并安装')}</span>
                     </div>
                   </div>
                 </div>
@@ -425,7 +437,7 @@ export function AboutPage() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Github size={18} className="text-fg-1" />
-                <span className="text-sm text-fg-1">License:</span>
+                <span className="text-sm text-fg-1">{t('settings.licenseLabel')}:</span>
                 <span className="text-sm px-2 py-0.5 rounded bg-brand/10 text-brand font-mono font-medium">
                   {t('settings.licenseType', 'Apache-2.0')}
                 </span>

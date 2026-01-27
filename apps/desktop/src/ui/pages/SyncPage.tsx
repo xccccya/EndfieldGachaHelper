@@ -24,20 +24,17 @@ import { parseAccountKey } from '../../lib/storage';
 import { formatDateShort } from '../../lib/dateUtils';
 
 /** 卡池类型名称映射 */
-const POOL_TYPE_NAMES: Record<string, string> = {
-  // 角色池
-  'E_CharacterGachaPoolType_Special': '角色限定池',
-  'E_CharacterGachaPoolType_Standard': '角色常驻池',
-  'E_CharacterGachaPoolType_Beginner': '角色新手池',
-  // 武器池
+const POOL_TYPE_LABEL_KEYS: Record<string, string> = {
+  'E_CharacterGachaPoolType_Special': 'sync.poolTypes.characterSpecial',
+  'E_CharacterGachaPoolType_Standard': 'sync.poolTypes.characterStandard',
+  'E_CharacterGachaPoolType_Beginner': 'sync.poolTypes.characterBeginner',
   // 注：当前实现使用统一武器池 'E_WeaponGachaPoolType_All'
-  'E_WeaponGachaPoolType_All': '武器池',
+  'E_WeaponGachaPoolType_All': 'sync.poolTypes.weaponAll',
 };
 
-/** 类别名称 */
-const CATEGORY_NAMES: Record<string, string> = {
-  'character': '角色',
-  'weapon': '武器',
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  character: 'sync.categories.character',
+  weapon: 'sync.categories.weapon',
 };
 
 export function SyncPage() {
@@ -46,6 +43,10 @@ export function SyncPage() {
   const { progress, syncRecords, reset } = useGachaSync();
   const { activeUid, activeAccount } = useAccounts();
   const { gachaRecords, weaponRecords, loading: recordsLoading } = useGachaRecordsData(activeUid);
+  const categoryKey = progress.category ? CATEGORY_LABEL_KEYS[progress.category] : undefined;
+  const categoryLabel = categoryKey ? t(categoryKey) : progress.category;
+  const poolTypeKey = progress.poolType ? POOL_TYPE_LABEL_KEYS[progress.poolType] : undefined;
+  const poolTypeLabel = poolTypeKey ? t(poolTypeKey) : progress.poolType;
 
   // 使用从 hook 获取的记录
   const existingCharRecords = gachaRecords;
@@ -142,14 +143,14 @@ export function SyncPage() {
                         ) : (
                           <User size={14} />
                         )}
-                        {CATEGORY_NAMES[progress.category] || progress.category}
+                        {categoryLabel}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span>{t('sync.currentPool')}</span>
                     <span className="text-fg-0">
-                      {POOL_TYPE_NAMES[progress.poolType] || progress.poolType}
+                      {poolTypeLabel}
                     </span>
                   </div>
                   <div className="flex justify-between">

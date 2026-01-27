@@ -1237,6 +1237,275 @@ html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[
 }
 
 /* ============================================
+   更新提示弹窗（Update Toast）
+   深浅色自适应
+   ============================================ */
+
+/* 深色模式（默认） */
+.ef-update-toast {
+  background-color: #1c2027;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4), 
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.ef-update-toast-overlay {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+}
+
+.ef-update-toast-title {
+  color: #f3f6ff;
+}
+
+.ef-update-toast-subtitle {
+  color: #9aa6c3;
+}
+
+.ef-update-toast-close {
+  color: #6b7280;
+}
+
+.ef-update-toast-close:hover {
+  color: #f3f6ff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.ef-update-toast-progress-bg {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 浅色模式 */
+html:not([data-theme='dark']) .ef-update-toast {
+  background-color: #ffffff;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.12), 
+    0 8px 16px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+html:not([data-theme='dark']) .ef-update-toast-overlay {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, transparent 50%);
+}
+
+html:not([data-theme='dark']) .ef-update-toast-title {
+  color: #111827;
+}
+
+html:not([data-theme='dark']) .ef-update-toast-subtitle {
+  color: #6b7280;
+}
+
+html:not([data-theme='dark']) .ef-update-toast-close {
+  color: #9ca3af;
+}
+
+html:not([data-theme='dark']) .ef-update-toast-close:hover {
+  color: #111827;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html:not([data-theme='dark']) .ef-update-toast-progress-bg {
+  background-color: #e5e7eb;
+}
+
+/* 图标颜色 - 深色模式 */
+.ef-update-toast-icon[data-status='available'] {
+  color: #fffa00;
+}
+
+.ef-update-toast-icon[data-status='downloading'] {
+  color: #60a5fa;
+}
+
+.ef-update-toast-icon[data-status='ready'] {
+  color: #4ade80;
+}
+
+/* 图标颜色 - 浅色模式（使用更深的颜色确保可读性） */
+html:not([data-theme='dark']) .ef-update-toast-icon[data-status='available'] {
+  color: #ca8a04;
+  background-color: rgba(202, 138, 4, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(202, 138, 4, 0.25) !important;
+}
+
+html:not([data-theme='dark']) .ef-update-toast-icon[data-status='downloading'] {
+  color: #2563eb;
+  background-color: rgba(37, 99, 235, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2) !important;
+}
+
+html:not([data-theme='dark']) .ef-update-toast-icon[data-status='ready'] {
+  color: #16a34a;
+  background-color: rgba(22, 163, 74, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.2) !important;
+}
+
+/* ============================================
+   新版本提示勋章（Update Badge）
+   深浅色自适应 + 折叠/展开态双形态
+   ============================================ */
+
+/* 展开态徽章：渐变背景 + 微发光边框 + 脉动动画 */
+.ef-update-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* 浅色模式：橙黄渐变增强对比 + 深色描边 */
+  background: linear-gradient(
+    135deg,
+    #f5a623 0%,
+    #f7b731 35%,
+    var(--brand) 70%,
+    #efe701 100%
+  );
+  background-size: 200% 200%;
+  color: #1a1a1a;
+  /* 深色描边 + 立体阴影（增强浅色背景对比） */
+  box-shadow:
+    0 0 0 1.5px rgba(180, 120, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.10);
+  /* 呼吸动画 */
+  animation: ef-badge-pulse 2.4s ease-in-out infinite;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ef-update-badge:hover {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 0 1.5px rgba(180, 120, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.40),
+    0 4px 12px rgba(0, 0, 0, 0.22),
+    0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* 深色模式展开态徽章 */
+html[data-theme='dark'] .ef-update-badge {
+  /* 深色模式：保持黄色但增强发光 */
+  background: linear-gradient(
+    135deg,
+    var(--brand) 0%,
+    #fff59d 30%,
+    var(--brand) 70%,
+    #efe701 100%
+  );
+  background-size: 200% 200%;
+  color: #0a0a0a;
+  box-shadow:
+    0 0 0 1px rgba(255, 250, 0, 0.30),
+    0 0 12px rgba(255, 250, 0, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme='dark'] .ef-update-badge:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 250, 0, 0.45),
+    0 0 20px rgba(255, 250, 0, 0.50),
+    0 6px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* 折叠态徽章（圆点指示器）*/
+.ef-update-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* 浅色模式：橙黄渐变 + 深色描边增强对比 */
+  background: linear-gradient(135deg, #f5a623 0%, var(--brand) 100%);
+  box-shadow:
+    0 0 0 2px var(--bg-1),
+    0 0 0 3px rgba(180, 120, 0, 0.50),
+    0 2px 6px rgba(0, 0, 0, 0.20);
+  /* 脉动动画 */
+  animation: ef-dot-pulse 2s ease-in-out infinite;
+}
+
+html[data-theme='dark'] .ef-update-dot {
+  /* 深色模式：纯黄色 + 强发光效果 */
+  background: var(--brand);
+  box-shadow:
+    0 0 0 2.5px var(--bg-1),
+    0 0 12px rgba(255, 250, 0, 0.60),
+    0 0 24px rgba(255, 250, 0, 0.25);
+}
+
+/* 徽章脉动动画（背景渐变流动 + 微缩放） */
+@keyframes ef-badge-pulse {
+  0%, 100% {
+    background-position: 0% 50%;
+    transform: scale(1);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: scale(1.02);
+  }
+}
+
+/* 圆点脉动动画（发光呼吸）- 浅色模式 */
+@keyframes ef-dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px rgba(180, 120, 0, 0.50),
+      0 2px 6px rgba(0, 0, 0, 0.20);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.18);
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 4px rgba(180, 120, 0, 0.65),
+      0 4px 10px rgba(0, 0, 0, 0.28);
+  }
+}
+
+html[data-theme='dark'] .ef-update-dot {
+  animation-name: ef-dot-pulse-dark;
+}
+
+@keyframes ef-dot-pulse-dark {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2.5px var(--bg-1),
+      0 0 12px rgba(255, 250, 0, 0.60),
+      0 0 24px rgba(255, 250, 0, 0.25);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.2);
+    box-shadow:
+      0 0 0 2.5px var(--bg-1),
+      0 0 18px rgba(255, 250, 0, 0.80),
+      0 0 36px rgba(255, 250, 0, 0.35);
+  }
+}
+
+/* 减少动画偏好：禁用动画 */
+@media (prefers-reduced-motion: reduce) {
+  .ef-update-badge,
+  .ef-update-dot {
+    animation: none !important;
+  }
+}
+
+/* ============================================
    全局滚动条样式（WebView2/Chromium）
    修复：之前误写成 :::
    ============================================ */

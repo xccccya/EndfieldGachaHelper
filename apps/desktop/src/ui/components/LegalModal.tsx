@@ -104,7 +104,7 @@ function TermsContent() {
           </p>
           <p>
             <span className="font-medium text-fg-0">3. </span>
-            {t('legal.terms.basic3', '本软件涉及的角色形象、账号数据等内容所有权均归鹰角网络所有。')}
+            {t('legal.terms.basic3', '本软件涉及的干员形象、账号数据等内容所有权均归鹰角网络所有。')}
           </p>
         </div>
       </section>

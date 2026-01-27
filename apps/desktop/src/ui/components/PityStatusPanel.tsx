@@ -4,6 +4,7 @@
  */
 
 import { AlertCircle, TrendingUp, Star, Sparkles, Target } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { PityStatus } from '../../lib/poolUtils';
 
 export type PityStatusPanelProps = {
@@ -22,6 +23,7 @@ export function PityStatusPanel({
   borderless = false,
   className,
 }: PityStatusPanelProps) {
+  const { t } = useTranslation();
   const {
     pityTo6Star,
     pityTo5Star,
@@ -66,7 +68,7 @@ export function PityStatusPanel({
       {/* 标题 */}
       <div className="flex items-center gap-2 text-sm font-medium text-fg-0">
         <TrendingUp size={16} className="text-purple-400" />
-        <span>保底状态</span>
+        <span>{t('stats.ui.pityPanel.title')}</span>
       </div>
       
       {/* 保底进度 */}
@@ -76,10 +78,10 @@ export function PityStatusPanel({
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5">
               <Star size={14} className={getSixStarColor()} />
-              <span className="text-fg-1">距6★小保底</span>
+              <span className="text-fg-1">{t('stats.ui.pityPanel.toSixStar')}</span>
             </div>
             <span className={`font-medium ${getSixStarColor()}`}>
-              {pityTo6Star}/80 抽
+              {pityTo6Star}/80 {t('stats.pulls')}
             </span>
           </div>
           <div className="h-2 bg-bg-3 rounded-full overflow-hidden">
@@ -91,13 +93,13 @@ export function PityStatusPanel({
           {isInProbBoostZone && (
             <div className="flex items-center gap-1 text-xs text-orange-400">
               <AlertCircle size={12} />
-              <span>已进入概率提升区（65抽后每抽+5%）</span>
+              <span>{t('stats.ui.pityPanel.probBoostHint')}</span>
             </div>
           )}
           {isHardPity && (
             <div className="flex items-center gap-1 text-xs text-red-400">
               <AlertCircle size={12} />
-              <span>已触发保底！下次必出6★</span>
+              <span>{t('stats.ui.pityPanel.hardPityHint')}</span>
             </div>
           )}
         </div>
@@ -107,10 +109,10 @@ export function PityStatusPanel({
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5">
               <Sparkles size={14} className="text-amber-400" />
-              <span className="text-fg-1">距5★保底</span>
+              <span className="text-fg-1">{t('stats.ui.pityPanel.toFiveStar')}</span>
             </div>
             <span className={`font-medium ${pityTo5Star >= 10 ? 'text-red-500' : 'text-amber-400'}`}>
-              {pityTo5Star}/10 抽
+              {pityTo5Star}/10 {t('stats.pulls')}
             </span>
           </div>
           <div className="h-2 bg-bg-3 rounded-full overflow-hidden">
@@ -127,10 +129,10 @@ export function PityStatusPanel({
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5">
                 <Target size={14} className="text-purple-400" />
-                <span className="text-fg-1">距UP大保底</span>
+                <span className="text-fg-1">{t('stats.ui.pityPanel.toUpHardPity')}</span>
               </div>
               <span className={`font-medium ${pityToUp6Star >= 120 ? 'text-red-500' : 'text-purple-400'}`}>
-                {pityToUp6Star}/120 抽
+                {pityToUp6Star}/120 {t('stats.pulls')}
               </span>
             </div>
             <div className="h-2 bg-bg-3 rounded-full overflow-hidden">
@@ -141,10 +143,10 @@ export function PityStatusPanel({
             </div>
             <div className="text-xs text-fg-2">
               {!hasSixStarInPool 
-                ? '※ 本池还未出6★，前120抽必出UP'
+                ? t('stats.ui.pityPanel.upNoSixStarHint')
                 : lastSixStarWasUp 
-                  ? '✓ 上次6★为UP，本次50%概率' 
-                  : '✗ 上次6★歪了，本次必出UP（大保底）'}
+                  ? t('stats.ui.pityPanel.upLastWasUpHint')
+                  : t('stats.ui.pityPanel.upLastWasOffHint')}
             </div>
           </div>
         )}
@@ -154,8 +156,8 @@ export function PityStatusPanel({
       {currentStreak > 0 && (
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-fg-2">已垫抽数（自上次6★）</span>
-            <span className="font-medium text-purple-400">{currentStreak} 抽</span>
+            <span className="text-fg-2">{t('stats.ui.pityPanel.currentStreak')}</span>
+            <span className="font-medium text-purple-400">{currentStreak} {t('stats.pulls')}</span>
           </div>
         </div>
       )}
@@ -164,17 +166,17 @@ export function PityStatusPanel({
       <div className="pt-2 border-t border-border/50 space-y-1 text-xs text-fg-2">
         <div className="flex items-center gap-1">
           <AlertCircle size={12} className="text-blue-400 flex-shrink-0" />
-          <span>6★和5★保底在「特许寻访」间继承</span>
+          <span>{t('stats.ui.pityPanel.inheritTitle')}</span>
         </div>
         {isSpecialPool && (
           <div className="flex items-center gap-1">
             <AlertCircle size={12} className="text-orange-400 flex-shrink-0" />
-            <span>UP大保底（120抽）仅在本池生效，池子结束清零</span>
+            <span>{t('stats.ui.pityPanel.upRule')}</span>
           </div>
         )}
         <div className="flex items-center gap-1">
           <AlertCircle size={12} className="text-green-400 flex-shrink-0" />
-          <span>免费十连不计入保底计数</span>
+          <span>{t('stats.ui.pityPanel.freeNotCounted')}</span>
         </div>
       </div>
     </div>

@@ -19,43 +19,86 @@ export function UpdateToast() {
 
   const subtitle = useMemo(() => {
     if (status === 'ready') return t('updater.toastReadyDesc', '点击重启完成更新');
-    if (status === 'downloading') return t('updater.toastDownloadingDesc', '请稍候，下载完成后将提示重启');
+    if (status === 'downloading') return t('updater.toastDownloadingDesc', '请稍候，下载完成后将自动重启并安装');
     const v = updateInfo?.version ? `v${updateInfo.version}` : '';
     return t('updater.toastAvailableDesc', '版本 {{version}} 已发布', { version: v });
   }, [status, t, updateInfo?.version]);
 
   if (!visible) return null;
 
+  // 根据状态确定颜色方案
+  const glowColor = status === 'ready' 
+    ? 'rgba(34, 197, 94, 0.35)' 
+    : status === 'downloading' 
+      ? 'rgba(59, 130, 246, 0.35)' 
+      : 'rgba(255, 250, 0, 0.3)';
+  
+  const topBarGradient = status === 'ready'
+    ? 'linear-gradient(to right, #22c55e, #10b981, rgba(34, 197, 94, 0.4))'
+    : status === 'downloading'
+      ? 'linear-gradient(to right, #3b82f6, #06b6d4, rgba(59, 130, 246, 0.4))'
+      : 'linear-gradient(to right, #fffa00, #fde047, rgba(255, 250, 0, 0.4))';
+
+  const iconBgColor = status === 'ready' 
+    ? 'rgba(34, 197, 94, 0.15)' 
+    : status === 'downloading' 
+      ? 'rgba(59, 130, 246, 0.15)' 
+      : 'rgba(255, 250, 0, 0.12)';
+  
+  const iconRingColor = status === 'ready'
+    ? 'rgba(34, 197, 94, 0.3)'
+    : status === 'downloading'
+      ? 'rgba(59, 130, 246, 0.3)'
+      : 'rgba(255, 250, 0, 0.25)';
+
   return (
     <div className="fixed bottom-5 right-5 z-[10002] w-[360px] max-w-[calc(100vw-40px)]">
-      <div className="relative rounded-lg border border-border bg-bg-1 shadow-xl overflow-hidden">
+      {/* 外层发光效果 */}
+      <div 
+        className="absolute -inset-1.5 rounded-2xl blur-xl opacity-60"
+        style={{ background: glowColor }}
+      />
+      
+      {/* 主卡片 */}
+      <div className="ef-update-toast relative rounded-xl overflow-hidden">
         {/* 顶部装饰条 */}
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-brand/80 via-purple-500/60 to-brand/20" />
+        <div 
+          className="absolute inset-x-0 top-0 h-1"
+          style={{ background: topBarGradient }}
+        />
 
-        <div className="p-4">
+        {/* 内部渐变装饰 */}
+        <div className="ef-update-toast-overlay absolute inset-0 pointer-events-none" />
+
+        <div className="relative p-4">
           <div className="flex items-start gap-3">
+            {/* 图标容器 */}
             <div
-              className={[
-                'mt-0.5 w-10 h-10 rounded-md flex items-center justify-center shrink-0 border',
-                status === 'ready'
-                  ? 'bg-green-500/12 text-green-400 border-green-500/30'
-                  : status === 'downloading'
-                    ? 'bg-blue-500/12 text-blue-400 border-blue-500/30'
-                    : 'bg-brand/12 text-brand border-brand/30',
-              ].join(' ')}
+              className="ef-update-toast-icon mt-0.5 w-11 h-11 rounded-lg flex items-center justify-center shrink-0"
+              data-status={status === 'ready' ? 'ready' : status === 'downloading' ? 'downloading' : 'available'}
+              style={{
+                backgroundColor: iconBgColor,
+                boxShadow: `inset 0 0 0 1px ${iconRingColor}`,
+              }}
             >
-              {status === 'ready' ? <RefreshCw size={18} /> : status === 'downloading' ? <Download size={18} /> : <Sparkles size={18} />}
+              {status === 'ready' ? <RefreshCw size={20} /> : status === 'downloading' ? <Download size={20} /> : <Sparkles size={20} />}
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-fg-0">{title}</div>
-                  <div className="mt-0.5 text-xs text-fg-1">{subtitle}</div>
+                  {/* 标题 */}
+                  <div className="ef-update-toast-title text-sm font-semibold">
+                    {title}
+                  </div>
+                  {/* 副标题 */}
+                  <div className="ef-update-toast-subtitle mt-0.5 text-xs">
+                    {subtitle}
+                  </div>
                 </div>
                 <button
                   type="button"
-                  className="text-fg-2 hover:text-fg-0 transition-colors"
+                  className="ef-update-toast-close p-1.5 rounded-md transition-colors"
                   aria-label={t('common.dismiss', '关闭')}
                   onClick={() => setToastOpen(false)}
                 >
@@ -63,18 +106,28 @@ export function UpdateToast() {
                 </button>
               </div>
 
+              {/* 下载进度条 */}
               {status === 'downloading' ? (
                 <div className="mt-3">
-                  <div className="flex items-center justify-between text-xs text-fg-1 mb-1">
-                    <span>{t('settings.downloading', '下载中...')}</span>
-                    <span className="text-blue-400 font-medium">{progress}%</span>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="ef-update-toast-subtitle">
+                      {t('settings.downloading', '下载中...')}
+                    </span>
+                    <span className="font-semibold text-blue-400">{progress}%</span>
                   </div>
-                  <div className="h-2 bg-bg-3 rounded-sm overflow-hidden">
-                    <div className="h-full bg-blue-400/90 rounded-sm transition-all duration-300" style={{ width: `${progress}%` }} />
+                  <div className="ef-update-toast-progress-bg h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-300" 
+                      style={{ 
+                        width: `${progress}%`,
+                        background: 'linear-gradient(to right, #3b82f6, #06b6d4)',
+                      }} 
+                    />
                   </div>
                 </div>
               ) : null}
 
+              {/* 操作按钮 */}
               <div className="mt-3 flex items-center gap-2">
                 {status === 'available' ? (
                   <>
@@ -83,7 +136,6 @@ export function UpdateToast() {
                       size="sm"
                       onClick={() => {
                         void downloadAndInstall().then(() => {
-                          // 下载开始后保持 toast 打开显示进度
                           setToastOpen(true);
                         });
                       }}
@@ -147,4 +199,3 @@ export function UpdateToast() {
 }
 
 export default UpdateToast;
-

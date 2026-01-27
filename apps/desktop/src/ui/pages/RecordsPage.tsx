@@ -496,6 +496,7 @@ export function RecordsPage() {
 }
 
 function RecordRow({ record }: { record: UnifiedGachaRecord }) {
+  const { t } = useTranslation();
   const rarityColors: Record<number, string> = {
     6: 'text-orange-500',
     5: 'text-amber-400',
@@ -519,7 +520,7 @@ function RecordRow({ record }: { record: UnifiedGachaRecord }) {
           {record.itemName}
         </span>
         {record.isNew && (
-          <Badge variant="success" className="text-xs">NEW</Badge>
+          <Badge variant="success" className="text-xs">{t('common.new')}</Badge>
         )}
       </div>
       <div className="col-span-2 text-center">

@@ -89,7 +89,7 @@ export function MainLayout() {
     setTheme(nextTheme);
   }, [nextTheme]);
 
-  // 响应托盘菜单发起的跳转（例如：点击“登录云同步账号”）
+  // 响应托盘菜单发起的跳转（例如：点击"登录云同步账号"）
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
@@ -166,7 +166,7 @@ export function MainLayout() {
             ef-sidebar shrink-0 flex flex-col rounded-lg border border-border bg-bg-1 shadow-md overflow-hidden
           `}
           data-collapsed={sidebarCollapsed ? 'true' : 'false'}
-          aria-label="Sidebar"
+          aria-label={t('common.sidebar')}
         >
           {/* 侧边栏顶部：仅折叠按钮 */}
           <div className="ef-sidebar-top">
@@ -206,34 +206,31 @@ export function MainLayout() {
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-brand rounded-r" />
                 )}
                 <span
-                  className={`ef-sidebar-icon shrink-0 ${location.pathname === item.path ? 'text-brand' : 'text-fg-1 group-hover:text-fg-0'} transition-colors`}
+                  className={`ef-sidebar-icon shrink-0 relative ${location.pathname === item.path ? 'text-brand' : 'text-fg-1 group-hover:text-fg-0'} transition-colors`}
                 >
                   {item.icon}
+                  {/* 折叠态：脉动圆点指示器（简洁不遮挡图标） */}
+                  {item.path === '/about' && hasUpdate && sidebarCollapsed ? (
+                    <span
+                      className="ef-update-dot"
+                      aria-label={t('updater.badgeAria', '有新版本可用')}
+                      title={t('updater.badgeTitle', '有新版本可用')}
+                    />
+                  ) : null}
                 </span>
-                <span
-                  className="ef-sidebar-label text-sm font-medium"
-                >
-                  {t(item.labelKey)}
+                <span className="ef-sidebar-label text-sm font-medium flex items-center gap-2 min-w-0">
+                  <span className="truncate">{t(item.labelKey)}</span>
+                  {/* 展开态：渐变徽章 + 脉动动效 */}
+                  {item.path === '/about' && hasUpdate && !sidebarCollapsed ? (
+                    <span
+                      className="ef-update-badge shrink-0"
+                      aria-label={t('updater.badgeAria', '有新版本可用')}
+                      title={t('updater.badgeTitle', '有新版本可用')}
+                    >
+                      {t('updater.badgeText', 'NEW')}
+                    </span>
+                  ) : null}
                 </span>
-                {/* 关于页更新提示 Badge */}
-                {item.path === '/about' && hasUpdate ? (
-                  <span
-                    className={[
-                      'ml-2 inline-flex items-center',
-                      sidebarCollapsed ? 'absolute right-3 top-3' : '',
-                    ].join(' ')}
-                    aria-label={t('updater.badgeAria', '有新版本可用')}
-                    title={t('updater.badgeTitle', '有新版本可用')}
-                  >
-                    {sidebarCollapsed ? (
-                      <span className="w-2 h-2 rounded-full bg-brand shadow-[0_0_0_3px_rgba(0,0,0,0.15)]" />
-                    ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30 font-semibold tracking-wide">
-                        {t('updater.badgeText', 'NEW')}
-                      </span>
-                    )}
-                  </span>
-                ) : null}
                 {/* 悬停箭头 */}
                 <ChevronRight 
                   size={14} 

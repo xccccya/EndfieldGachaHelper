@@ -47,14 +47,12 @@ import {
 type PoolTab = 'special' | 'weapon' | 'standard' | 'beginner';
 
 /** 卡池标签名称 */
-const POOL_TAB_NAMES: Record<PoolTab, string> = {
-  special: '限定池',
-  weapon: '武器池',
-  standard: '常驻池',
-  beginner: '新手池',
+const POOL_TAB_LABEL_KEYS: Record<PoolTab, string> = {
+  special: 'stats.ui.poolTabs.special',
+  weapon: 'stats.ui.poolTabs.weapon',
+  standard: 'stats.ui.poolTabs.standard',
+  beginner: 'stats.ui.poolTabs.beginner',
 };
-
-const CALC_MAY_DIFFER_HINT = '计算方式可能和实际情况有出入，仅供参考。';
 
 /** 6星进度条段 - 记录抽到6星的过程 */
 type PitySegment = {
@@ -160,13 +158,14 @@ function groupById(items: Array<{ id?: string | undefined; name: string; isUp?: 
 }
 
 function CountBadge({ count }: { count: number }) {
+  const { t } = useTranslation();
   if (count <= 1) return null;
   const label = count >= 100 ? '99+' : String(count);
   return (
     <span
       className="absolute -top-1 -right-1 px-1.5 h-[16px] rounded-[6px] bg-amber-500 text-black text-[11px] font-extrabold leading-[16px] shadow-md"
-      aria-label={`次数 ${count}`}
-      title={`次数 ${count}`}
+      aria-label={t('stats.ui.countTimes', { count })}
+      title={t('stats.ui.countTimes', { count })}
     >
       {label}
     </span>
@@ -188,13 +187,14 @@ function FiveStarSwitch({
   onToggle: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const isOn = value;
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={isOn}
-      title={isOn ? '关闭 5 星展示' : '开启 5 星展示'}
+      title={isOn ? t('stats.ui.fiveStarSwitchOnTitle') : t('stats.ui.fiveStarSwitchOffTitle')}
       className={`
         group inline-flex items-center gap-2
         rounded-full
@@ -227,7 +227,7 @@ function FiveStarSwitch({
           ${isOn ? 'text-amber-400' : 'text-fg-1'}
         `}
       >
-        5星展示
+        {t('stats.ui.fiveStarSwitch')}
       </span>
 
       <span
@@ -260,6 +260,7 @@ function FiveStarSwitch({
 }
 
 function SharedSpecialPityCard({ pityStatus }: { pityStatus: PityStatus }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const panelId = 'shared-special-pity-panel';
 
@@ -273,11 +274,11 @@ function SharedSpecialPityCard({ pityStatus }: { pityStatus: PityStatus }) {
         aria-controls={panelId}
       >
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="font-medium text-fg-0">特许寻访共享保底</span>
+          <span className="font-medium text-fg-0">{t('stats.ui.sharedPityTitle')}</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-purple-500">
-            当前 {pityStatus.pityTo6Star} 抽
+            {t('stats.ui.currentPityLabel', { count: pityStatus.pityTo6Star })}
           </span>
           <ChevronDown
             size={16}
@@ -301,6 +302,7 @@ function SharedSpecialPityCard({ pityStatus }: { pityStatus: PityStatus }) {
 }
 
 function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats; showFiveStars: boolean }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -311,14 +313,18 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
 
   const { status } = group;
   const upName = group.poolConfig?.pool?.up6_name;
-  const boxName = group.poolConfig?.pool?.gift_weapon_box_name || '补充武库箱';
-  const giftName = group.poolConfig?.pool?.gift_weapon_reward_name || '赠礼';
+  const boxName = group.poolConfig?.pool?.gift_weapon_box_name || t('stats.ui.weaponPool.fallbackBox');
+  const giftName = group.poolConfig?.pool?.gift_weapon_reward_name || t('stats.ui.weaponPool.fallbackGift');
 
   const recentSessions = [...group.sessions].slice(-20).reverse();
 
   const nextRewardText = status.nextCumulativeReward
-    ? `${status.nextCumulativeReward.type === 'box' ? boxName : giftName}：还差 ${status.nextCumulativeReward.remainingSessions} 次（第 ${status.nextCumulativeReward.atSessionNo} 次）`
-    : '无';
+    ? t('stats.ui.weaponPool.nextRewardText', {
+        reward: status.nextCumulativeReward.type === 'box' ? boxName : giftName,
+        remaining: t('stats.ui.weaponPool.remainingSessions', { count: status.nextCumulativeReward.remainingSessions }),
+        session: t('stats.ui.weaponPool.sessionNo', { no: status.nextCumulativeReward.atSessionNo }),
+      })
+    : t('stats.ui.weaponPool.none');
 
   return (
     <div className="border border-border rounded-md overflow-hidden relative group">
@@ -362,19 +368,19 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
             {group.poolName}
           </span>
           <span className="text-sm text-fg-1 drop-shadow-sm">
-            共 {status.totalSessions} 次申领
+            {t('stats.ui.weaponPool.totalSessions', { count: status.totalSessions })}
           </span>
           <span className="text-sm text-fg-2 drop-shadow-sm">
-            {group.itemCount} 件武器
+            {t('stats.ui.weaponPool.itemCount', { count: group.itemCount })}
           </span>
           {status.sixStarCount > 0 && (
             <span className="text-sm text-orange-500 drop-shadow-sm">
-              {status.sixStarCount} 把6星
+              {t('stats.ui.weaponPool.sixStarCount', { count: status.sixStarCount })}
             </span>
           )}
           {upName && (
             <span className="text-sm text-orange-500 drop-shadow-sm">
-              UP：{upName}（{status.up6Count}）
+              {t('stats.ui.weaponPool.upLabel', { name: upName, count: status.up6Count })}
             </span>
           )}
         </div>
@@ -402,21 +408,21 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
           <div className="relative px-4 pt-6 pb-3 space-y-3">
             <div className="grid md:grid-cols-2 gap-3">
               <div className="rounded-md border border-border/50 bg-bg-2/40 px-3 py-2 text-sm">
-                <div className="text-fg-1 font-medium">保底</div>
+                <div className="text-fg-1 font-medium">{t('stats.ui.weaponPool.pityTitle')}</div>
                 <div className="mt-1 space-y-1 text-xs text-fg-2">
                   <div className="flex items-center justify-between">
-                    <span>距6★保底（4次申领）</span>
+                    <span>{t('stats.ui.weaponPool.pitySixStar')}</span>
                     <span className="text-orange-400 font-medium">
-                      {status.sessionsSinceLastSixStar}/4（还差 {status.sessionsToSixStarHardPity} 次）
+                      {status.sessionsSinceLastSixStar}/4 ({t('stats.ui.weaponPool.remainingSessions', { count: status.sessionsToSixStarHardPity })})
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>距UP保底（8次申领，一期一次）</span>
+                    <span>{t('stats.ui.weaponPool.pityUp')}</span>
                     {status.hasUp6 ? (
-                      <span className="text-green-400 font-medium">已获得UP</span>
+                      <span className="text-green-400 font-medium">{t('stats.ui.weaponPool.hasUp')}</span>
                     ) : (
                       <span className="text-purple-400 font-medium">
-                        还差 {status.sessionsToUp6HardPity} 次
+                        {t('stats.ui.weaponPool.remainingSessions', { count: status.sessionsToUp6HardPity })}
                       </span>
                     )}
                   </div>
@@ -424,24 +430,24 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
               </div>
 
               <div className="rounded-md border border-border/50 bg-bg-2/40 px-3 py-2 text-sm">
-                <div className="text-fg-1 font-medium">累计奖励</div>
+                <div className="text-fg-1 font-medium">{t('stats.ui.weaponPool.cumulativeRewardsTitle')}</div>
                 <div className="mt-1 space-y-1 text-xs text-fg-2">
                   <div className="flex items-center justify-between">
-                    <span>下一次</span>
+                    <span>{t('stats.ui.weaponPool.next')}</span>
                     <span className="text-cyan-400 font-medium">{nextRewardText}</span>
                   </div>
                   <div className="text-fg-2">
-                    说明：按十连申领次数计数（第10次箱子、第18次赠礼，之后每16次循环）。
+                    {t('stats.ui.weaponPool.cumulativeExplain')}
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="rounded-md border border-border/50 bg-bg-2/20 px-3 py-2">
-              <div className="text-sm font-medium text-fg-0">最近申领（最多20次）</div>
+              <div className="text-sm font-medium text-fg-0">{t('stats.ui.weaponPool.recentTitle')}</div>
               <div className="mt-2 space-y-1 divide-y divide-border/30 text-sm">
                 {recentSessions.length === 0 ? (
-                  <div className="text-fg-2 text-sm">暂无记录</div>
+                  <div className="text-fg-2 text-sm">{t('stats.ui.weaponPool.noRecords')}</div>
                 ) : (
                   recentSessions.map((s) => {
                     const rewardLabel = s.cumulativeReward
@@ -466,17 +472,19 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
                       <div key={`${group.poolId}_${s.sessionNo}_${s.gachaTs}`} className="py-1.5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="text-fg-1">
-                            第 <span className="font-medium text-fg-0">{s.sessionNo}</span> 次申领
+                            <span className="font-medium text-fg-0">{t('stats.ui.weaponPool.sessionNo', { no: s.sessionNo })}</span>
                             {rewardLabel && (
-                              <span className="ml-2 text-xs text-cyan-400">累计奖励：{rewardLabel}</span>
+                              <span className="ml-2 text-xs text-cyan-400">
+                                {t('stats.ui.weaponPool.cumulativeRewardLabel', { reward: rewardLabel })}
+                              </span>
                             )}
                           </div>
                           <div className="text-fg-2">
                             {s.sixStars.length === 0 ? (
-                              <span>未出6★</span>
+                              <span>{t('stats.ui.weaponPool.noSixStar')}</span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5">
-                                <span className="text-orange-400 font-medium">6★：</span>
+                                <span className="text-orange-400 font-medium">{t('stats.ui.weaponPool.star6Prefix')}</span>
                                 <span className="inline-flex flex-wrap items-center gap-1">
                                   {sixStarWeapons.map((w) => (
                                     <span key={`${w.id ?? w.name}`} className="relative inline-flex">
@@ -485,7 +493,7 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
                                   ))}
                                 </span>
                                 {upName && s.sixStars.some((r) => r.itemName === upName) && (
-                                  <span className="text-purple-400 text-xs">（含UP）</span>
+                                  <span className="text-purple-400 text-xs">{t('stats.ui.weaponPool.includesUp')}</span>
                                 )}
                               </span>
                             )}
@@ -496,7 +504,7 @@ function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats;
                           <div className="mt-1 pl-2">
                             <div className="flex flex-wrap items-center gap-1.5">
                               {countedFiveStarWeapons.slice(0, 14).map((w) => (
-                                <span key={w.id} className="relative inline-flex" title={`${w.name}（${w.count}）`}>
+                                <span key={w.id} className="relative inline-flex" title={`${w.name} (${w.count})`}>
                                   <WeaponAvatar weaponId={w.id} rarity={5} size="sm" />
                                   <CountBadge count={w.count} />
                                 </span>
@@ -779,6 +787,7 @@ function FreeSegmentDisplay({
   freeSegment: FreeSegmentStats;
   poolConfig: PoolConfig | null;
 }) {
+  const { t } = useTranslation();
   const { hasFree, freeSixStar, freeSixStarIsUp, freeCount } = freeSegment;
   
   // 只在有免费十连数据时显示
@@ -805,23 +814,23 @@ function FreeSegmentDisplay({
             {freeSixStar.itemName}
           </span>
         ) : (
-          <span className="text-fg-2 text-sm">未出UP</span>
+          <span className="text-fg-2 text-sm">{t('stats.ui.freeSegment.noUp')}</span>
         )}
       </div>
       
       {/* 说明文字 */}
       <div className="flex-1 text-sm text-fg-1">
-        免费十连结果
+        {t('stats.ui.freeSegment.title')}
       </div>
       
       {/* 免费标记 */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <span className="text-sm font-medium text-green-400">
-          {freeCount} 抽
+          {freeCount} {t('stats.pulls')}
         </span>
         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-green-500/20 text-green-400">
           <Gift size={10} />
-          免费
+          {t('stats.ui.freeSegment.free')}
         </span>
       </div>
     </div>
@@ -842,6 +851,7 @@ function PityProgressBar({
   showFiveStars: boolean;
   maxPulls?: number;
 }) {
+  const { t } = useTranslation();
   const prefersReducedMotion = usePrefersReducedMotion();
   const percentage = Math.min((segment.pulls / maxPulls) * 100, 100);
   const hasSixStar = !!segment.sixStar;
@@ -893,7 +903,7 @@ function PityProgressBar({
               {segment.sixStar!.itemName}
             </span>
           ) : (
-            <span className="text-fg-2 text-sm">未出</span>
+          <span className="text-fg-2 text-sm">{t('stats.ui.progress.notObtained')}</span>
           )}
         </div>
         
@@ -908,7 +918,7 @@ function PityProgressBar({
         {/* 抽数 */}
         <div className="w-16 text-right flex-shrink-0">
           <span className={`text-sm font-medium ${hasSixStar ? 'text-orange-500' : 'text-fg-1'}`}>
-            {segment.pulls} 抽
+            {segment.pulls} {t('stats.pulls')}
           </span>
         </div>
       </div>
@@ -917,7 +927,7 @@ function PityProgressBar({
         <div className="mt-1 pl-36 pr-16">
           <div className="flex flex-wrap items-center gap-1.5">
             {countedFiveStars.slice(0, 14).map((c) => (
-              <span key={c.id} className="relative inline-flex" title={`${c.name}（${c.count}）`}>
+              <span key={c.id} className="relative inline-flex" title={`${c.name} (${c.count})`}>
                 <CharacterAvatar charId={c.id} rarity={5} size="sm" />
                 <CountBadge count={c.count} />
               </span>
@@ -936,6 +946,7 @@ function PityProgressBar({
  * 单个池子的展示组件
  */
 function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFiveStars: boolean }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const [pityExpanded, setPityExpanded] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -995,16 +1006,16 @@ function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFi
         <div className="flex items-center gap-3 flex-wrap">
           <span className="font-medium text-fg-0 drop-shadow-sm">{group.poolName}</span>
           <span className="text-sm text-fg-1 drop-shadow-sm">
-            共 {group.total} 抽
+            {t('stats.ui.poolSummary.subtitle', { count: group.total })}
           </span>
           {group.sixStarCount > 0 && (
             <span className="text-sm text-orange-500 drop-shadow-sm">
-              {group.sixStarCount} 个6星
+              {t('stats.ui.poolSummary.metricStandardLeft', { six: group.sixStarCount })}
             </span>
           )}
           {!isSpecialPool && group.currentPity > 0 && (
             <span className="text-sm text-purple-500 drop-shadow-sm">
-              当前 {group.currentPity} 抽
+              {t('stats.ui.currentPityLabel', { count: group.currentPity })}
             </span>
           )}
           {/* 武库配额 */}
@@ -1012,15 +1023,15 @@ function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFi
             <span className="flex items-center gap-1 text-sm text-cyan-400 drop-shadow-sm">
               <img 
                 src="/efimg/gameEntryId=930.png" 
-                alt="武库配额" 
+                alt={t('stats.ui.armoryQuota')} 
                 className="w-4 h-4"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                 }}
               />
-              <span className="text-fg-2">累计产出</span>
+              <span className="text-fg-2">{t('stats.ui.armoryQuotaProduced')}</span>
               {formatArmoryQuota(group.armoryQuota)}
-              <HelpTooltip text={CALC_MAY_DIFFER_HINT} />
+              <HelpTooltip text={t('stats.ui.calcMayDifferHint')} />
             </span>
           )}
         </div>
@@ -1067,47 +1078,47 @@ function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFi
               <div className="rounded-md border border-border/50 bg-bg-2/40 px-3 py-2 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-fg-1">
-                    当期累计（不含免费）：
+                    {t('stats.ui.milestones.currentPeriod')}
                     <span className="ml-1 font-medium text-fg-0">
                       {group.specialMilestones.nonFreePulls}
                     </span>
-                    抽
+                    {t('stats.pulls')}
                   </div>
                   <div className="text-fg-2 text-xs">
-                    60/120/240 里程碑按当期独立计算
+                    {t('stats.ui.milestones.note')}
                   </div>
                 </div>
 
                 <div className="mt-2 grid gap-1.5 text-xs text-fg-2">
                   <div className="flex items-center justify-between">
-                    <span>60 抽：寻访情报书（一期一次）</span>
+                    <span>{t('stats.ui.milestones.infoBook')}</span>
                     {group.specialMilestones.hasInfoBook60 ? (
-                      <span className="text-green-400 font-medium">已获得</span>
+                      <span className="text-green-400 font-medium">{t('stats.ui.milestones.obtained')}</span>
                     ) : (
                       <span className="text-amber-400 font-medium">
-                        还差 {group.specialMilestones.pullsToInfoBook60} 抽
+                        {t('stats.ui.milestones.remainingPulls', { count: group.specialMilestones.pullsToInfoBook60 })}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span>120 抽：必得当期UP 6★（一期一次）</span>
+                    <span>{t('stats.ui.milestones.up120')}</span>
                     {group.specialMilestones.hasUp6 ? (
-                      <span className="text-green-400 font-medium">已获得UP</span>
+                      <span className="text-green-400 font-medium">{t('stats.ui.weaponPool.hasUp')}</span>
                     ) : (
                       <span className="text-purple-400 font-medium">
-                        还差 {group.specialMilestones.pullsToUp120} 抽
+                        {t('stats.ui.milestones.remainingPulls', { count: group.specialMilestones.pullsToUp120 })}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span>240 抽：信物（可重复）</span>
+                    <span>{t('stats.ui.milestones.token240')}</span>
                     <span className="text-cyan-400 font-medium">
-                      {group.specialMilestones.token240Times} 次
+                      {t('stats.ui.milestones.times', { count: group.specialMilestones.token240Times })}
                       {group.specialMilestones.pullsToNextToken240 > 0 && (
                         <span className="text-fg-2 font-normal">
-                          （下次还差 {group.specialMilestones.pullsToNextToken240} 抽）
+                          {t('stats.ui.milestones.nextRemaining', { count: group.specialMilestones.pullsToNextToken240 })}
                         </span>
                       )}
                     </span>
@@ -1120,7 +1131,7 @@ function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFi
             <div className="border-t border-border/50 pt-3">
               {isSpecialPool ? (
                 <div className="text-xs text-fg-2">
-                  6★/5★保底为「特许寻访」跨池继承，已在上方“特许寻访共享保底”卡片中展示；本池卡片仅展示当期里程碑与本池内出货记录。
+                  {t('stats.ui.pityDetailsDesc')}
                 </div>
               ) : (
                 <>
@@ -1130,7 +1141,7 @@ function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFi
                     type="button"
                     aria-expanded={pityExpanded}
                   >
-                    <span>保底状态详情</span>
+                    <span>{t('stats.ui.pityDetailsTitle')}</span>
                     <ChevronDown
                       size={16}
                       className={`text-fg-2 transition-transform ${pityExpanded ? 'rotate-180' : ''}`}
@@ -1169,6 +1180,7 @@ function FixedPoolCard({
   showTitle?: boolean;
   showFiveStars: boolean;
 }) {
+  const { t } = useTranslation();
   const [segments, setSegments] = useState<PitySegment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -1193,7 +1205,7 @@ function FixedPoolCard({
     return (
       <div className="text-center py-8 text-fg-2">
         <BarChart3 size={32} className="mx-auto mb-2 opacity-30" />
-        <p>暂无抽卡记录</p>
+        <p>{t('stats.ui.poolEmpty.fixed')}</p>
       </div>
     );
   }
@@ -1206,14 +1218,14 @@ function FixedPoolCard({
       {/* 概要信息 */}
       <div className="flex items-center gap-4 px-1 py-2">
         <span className="text-fg-1">
-          共 <span className="font-medium text-fg-0">{records.length}</span> 抽
+          {t('stats.ui.poolSummary.subtitle', { count: records.length })}
         </span>
         <span className="text-fg-1">
-          <span className="font-medium text-orange-500">{sixStarCount}</span> 个6星
+          <span className="font-medium text-orange-500">{t('stats.star6Label')}</span>: <span className="font-medium text-orange-500">{sixStarCount}</span>
         </span>
         {currentPity > 0 && (
           <span className="text-fg-1">
-            当前 <span className="font-medium text-purple-500">{currentPity}</span> 抽
+            {t('stats.ui.currentPityLabel', { count: currentPity })}
           </span>
         )}
       </div>
@@ -1244,7 +1256,7 @@ function FixedPoolCard({
                       {segment.sixStar.itemName}
                     </span>
                   ) : (
-                    <span className="text-fg-2 text-sm">未出</span>
+                    <span className="text-fg-2 text-sm">{t('stats.ui.progress.notObtained')}</span>
                   )}
                 </div>
                 
@@ -1266,7 +1278,7 @@ function FixedPoolCard({
                 {/* 抽数 */}
                 <div className="w-16 text-right flex-shrink-0">
                   <span className={`text-sm font-medium ${segment.sixStar ? 'text-orange-500' : 'text-fg-1'}`}>
-                    {segment.pulls} 抽
+                    {segment.pulls} {t('stats.pulls')}
                   </span>
                 </div>
               </div>
@@ -1283,7 +1295,7 @@ function FixedPoolCard({
                     )
                       .slice(0, 14)
                       .map((c) => (
-                        <span key={c.id} className="relative inline-flex" title={`${c.name}（${c.count}）`}>
+                        <span key={c.id} className="relative inline-flex" title={`${c.name} (${c.count})`}>
                           <CharacterAvatar charId={c.id} rarity={5} size="sm" />
                           <CountBadge count={c.count} />
                         </span>
@@ -1300,7 +1312,7 @@ function FixedPoolCard({
 }
 
 export function StatsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { activeUid, activeAccount, loading: accountsLoading } = useAccounts();
   const { gachaRecords, weaponRecords, loading: recordsLoading } = useGachaRecordsData(activeUid);
@@ -1747,33 +1759,33 @@ export function StatsPage() {
 
             {/* 分类别统计快速预览 */}
             <div className="flex-1 flex justify-end gap-3 text-sm items-center">
-              <span className="text-fg-2">累计消耗</span>
+              <span className="text-fg-2">{t('stats.ui.cumulativeConsume')}</span>
               {(categoryFilter === 'all' || categoryFilter === 'character') && (
                 <span className="flex items-center gap-1.5 text-fg-1 tabular-nums">
                   <img
                     src="/efimg/gameEntryId=926.png"
-                    alt="嵌晶玉"
+                    alt={t('stats.ui.originium')}
                     className="w-4 h-4"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                  {characterCrystalConsumedAll.toLocaleString('zh-CN')}
-                  <HelpTooltip text={CALC_MAY_DIFFER_HINT} />
+                  {characterCrystalConsumedAll.toLocaleString(i18n.language)}
+                  <HelpTooltip text={t('stats.ui.calcMayDifferHint')} />
                 </span>
               )}
               {(categoryFilter === 'all' || categoryFilter === 'weapon') && (
                 <span className="flex items-center gap-1.5 text-fg-1 tabular-nums">
                   <img
                     src="/efimg/gameEntryId=930.png"
-                    alt="武库配额"
+                    alt={t('stats.ui.armoryQuota')}
                     className="w-4 h-4"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
-                  {weaponQuotaConsumedAll.toLocaleString('zh-CN')}
-                  <HelpTooltip text={CALC_MAY_DIFFER_HINT} />
+                  {weaponQuotaConsumedAll.toLocaleString(i18n.language)}
+                  <HelpTooltip text={t('stats.ui.calcMayDifferHint')} />
                 </span>
               )}
             </div>
@@ -1808,30 +1820,30 @@ export function StatsPage() {
           {/* 新增：限定/武器/常驻累计抽数与关键指标 */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <PoolSummaryTile
-              title="限定池"
-              subtitle={`累计 ${poolSummaries.special.total} 抽`}
-              metricLeft={`6★：${poolSummaries.special.six} / 歪：${poolSummaries.special.off}`}
-              metricRight={`UP平均：${formatMaybeNumber(poolSummaries.special.upAvg)} 抽`}
+              title={t('stats.ui.poolTabs.special')}
+              subtitle={t('stats.ui.poolSummary.subtitle', { count: poolSummaries.special.total })}
+              metricLeft={t('stats.ui.poolSummary.metricSpecialLeft', { six: poolSummaries.special.six, off: poolSummaries.special.off })}
+              metricRight={t('stats.ui.poolSummary.metricSpecialRight', { avg: formatMaybeNumber(poolSummaries.special.upAvg) })}
               counts={{ 6: poolSummaries.special.counts[6], 5: poolSummaries.special.counts[5], 4: poolSummaries.special.counts[4] }}
               prefersReducedMotion={prefersReducedMotion}
               accentClassName="text-purple-400"
             />
 
             <PoolSummaryTile
-              title="武器池"
-              subtitle={`累计 ${poolSummaries.weapon.total} 抽`}
-              metricLeft={`6★：${poolSummaries.weapon.six} / 歪：${poolSummaries.weapon.off}`}
-              metricRight={`UP平均：${formatMaybeNumber(poolSummaries.weapon.upAvg)} 抽`}
+              title={t('stats.ui.poolTabs.weapon')}
+              subtitle={t('stats.ui.poolSummary.subtitle', { count: poolSummaries.weapon.total })}
+              metricLeft={t('stats.ui.poolSummary.metricWeaponLeft', { six: poolSummaries.weapon.six, off: poolSummaries.weapon.off })}
+              metricRight={t('stats.ui.poolSummary.metricWeaponRight', { avg: formatMaybeNumber(poolSummaries.weapon.upAvg) })}
               counts={{ 6: poolSummaries.weapon.counts[6], 5: poolSummaries.weapon.counts[5], 4: poolSummaries.weapon.counts[4] }}
               prefersReducedMotion={prefersReducedMotion}
               accentClassName="text-amber-500"
             />
 
             <PoolSummaryTile
-              title="常驻池"
-              subtitle={`累计 ${poolSummaries.standard.total} 抽`}
-              metricLeft={`6★：${poolSummaries.standard.six}`}
-              metricRight={`6★平均：${formatMaybeNumber(poolSummaries.standard.sixAvg)} 抽`}
+              title={t('stats.ui.poolTabs.standard')}
+              subtitle={t('stats.ui.poolSummary.subtitle', { count: poolSummaries.standard.total })}
+              metricLeft={t('stats.ui.poolSummary.metricStandardLeft', { six: poolSummaries.standard.six })}
+              metricRight={t('stats.ui.poolSummary.metricStandardRight', { avg: formatMaybeNumber(poolSummaries.standard.sixAvg) })}
               counts={{ 6: poolSummaries.standard.counts[6], 5: poolSummaries.standard.counts[5], 4: poolSummaries.standard.counts[4] }}
               prefersReducedMotion={prefersReducedMotion}
               accentClassName="text-blue-400"
@@ -1873,7 +1885,7 @@ export function StatsPage() {
                 }`}
                 onClick={() => setActivePoolTab(tab)}
               >
-                {POOL_TAB_NAMES[tab]}
+                {t(POOL_TAB_LABEL_KEYS[tab])}
                 <span className="ml-1.5 text-xs text-fg-2">
                   ({getTabCount(tab)})
                 </span>
@@ -1889,7 +1901,7 @@ export function StatsPage() {
                 {poolGroupedData.special.length === 0 ? (
                   <div className="text-center py-8 text-fg-2">
                     <User size={32} className="mx-auto mb-2 opacity-30" />
-                    <p>暂无限定池抽卡记录</p>
+                    <p>{t('stats.ui.poolEmpty.special')}</p>
                   </div>
                 ) : (
                   <>
@@ -1908,7 +1920,7 @@ export function StatsPage() {
                 {poolGroupedData.weapon.length === 0 ? (
                   <div className="text-center py-8 text-fg-2">
                     <Sword size={32} className="mx-auto mb-2 opacity-30" />
-                    <p>暂无武器池抽卡记录</p>
+                    <p>{t('stats.ui.poolEmpty.weapon')}</p>
                   </div>
                 ) : (
                   poolGroupedData.weapon.map((group) => (
@@ -1922,7 +1934,7 @@ export function StatsPage() {
             {activePoolTab === 'standard' && (
               <div className={`ef-tab-panel ${tabDir > 0 ? 'ef-tab-panel--from-right' : 'ef-tab-panel--from-left'}`}>
                 <FixedPoolCard
-                poolName="常驻池"
+                poolName={t('stats.ui.poolTabs.standard')}
                 records={poolGroupedData.standard}
                 showFiveStars={showFiveStars}
                   showTitle={false}
@@ -1934,7 +1946,7 @@ export function StatsPage() {
             {activePoolTab === 'beginner' && (
               <div className={`ef-tab-panel ${tabDir > 0 ? 'ef-tab-panel--from-right' : 'ef-tab-panel--from-left'}`}>
                 <FixedPoolCard
-                poolName="新手池"
+                poolName={t('stats.ui.poolTabs.beginner')}
                 records={poolGroupedData.beginner}
                 showFiveStars={showFiveStars}
                   showTitle={false}
@@ -2098,6 +2110,7 @@ function RarityStackBar({
   prefersReducedMotion: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const total = counts[6] + counts[5] + counts[4];
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [hover, setHover] = useState<null | { rarity: 4 | 5 | 6; count: number; pct: number; left: number }>(null);
@@ -2121,7 +2134,7 @@ function RarityStackBar({
   };
 
   return (
-    <div ref={wrapRef} className={`relative ${className ?? ''}`} aria-label="6/5/4★分布">
+    <div ref={wrapRef} className={`relative ${className ?? ''}`} aria-label={t('stats.ui.rarityAria')}>
       {hover && (
         <div
           className="
@@ -2133,7 +2146,7 @@ function RarityStackBar({
           "
           style={{ left: hover.left, opacity: 1, backgroundColor: 'var(--bg-1)' }}
         >
-          {hover.rarity}★：{hover.count}（{hover.pct.toFixed(2)}%）
+          {t('stats.ui.rarityTooltip', { rarity: hover.rarity, count: hover.count, pct: hover.pct.toFixed(2) })}
         </div>
       )}
 
