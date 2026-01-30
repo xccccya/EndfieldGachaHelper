@@ -22,15 +22,16 @@ Language / 言語: [简体中文](README.md) | **English** | [日本語](README.
 ## Features
 
 - Sync pull history via the official API
-- Statistics & analysis (limited / standard / beginner / weapon)
-- Export / import (JSON / CSV)
+- Statistics & analysis (limited / standard / beginner / weapon banners)
+- Pity counter & progress tracking
+- Export / import data (JSON / CSV)
 - Multi-account and multi-character binding / switching
 - Supports CN server Hypergryph accounts and Global Gryphline accounts (Asia and Americas/Europe servers)
 - Cloud data sync
 - Internationalization (i18n)
-- Light / dark mode
-- Operator / weapon icon assets (WIP)
-- Pull rankings based on cloud-sync users (WIP)
+- Light / dark mode toggle
+- Operator / weapon / banner artwork display
+- Pull leaderboards — rankings based on cloud-synced player data (NEW)
 
 ## Preview
 
