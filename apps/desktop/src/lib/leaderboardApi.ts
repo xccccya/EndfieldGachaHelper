@@ -81,7 +81,7 @@ export const leaderboardApi = {
   async getAllLeaderboards(accessToken?: string): Promise<AllLeaderboardsResponse> {
     return request<AllLeaderboardsResponse>('/leaderboard/all', {
       method: 'GET',
-      accessToken,
+      ...(accessToken ? { accessToken } : {}),
     });
   },
 

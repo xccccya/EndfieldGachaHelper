@@ -100,7 +100,9 @@ function LeaderboardItem({
             {entry.displayUid}
           </span>
           {entry.uidHidden && (
-            <EyeOff size={12} className="text-fg-2" title="UID已隐藏" />
+            <span title="UID已隐藏">
+              <EyeOff size={12} className="text-fg-2" />
+            </span>
           )}
           {isMe && (
             <Badge className="bg-brand/20 text-brand text-xs">我</Badge>
