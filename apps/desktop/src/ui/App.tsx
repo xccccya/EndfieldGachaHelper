@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { UpdateProvider } from '../hooks/update';
 import { MainLayout } from './layouts/MainLayout';
-import { RecordsPage, SyncPage, StatsPage, AccountPage, SettingsPage, CloudSyncPage, AboutPage, TrayMenuPage } from './pages';
+import { RecordsPage, SyncPage, StatsPage, AccountPage, SettingsPage, CloudSyncPage, LeaderboardPage, AboutPage, TrayMenuPage } from './pages';
 
 export default function App() {
   return (
@@ -20,6 +20,7 @@ export default function App() {
             <Route path="/stats" element={<StatsPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/cloud-sync" element={<CloudSyncPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Route>

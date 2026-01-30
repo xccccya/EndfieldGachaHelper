@@ -1,0 +1,68 @@
+/* ============================================
+   工具类（Utilities）
+   ============================================ */
+
+/* 动画工具类 */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse-brand {
+  animation: pulse-brand 2s infinite;
+}
+
+.animate-industrial-flicker {
+  animation: industrial-flicker 0.6s ease-out;
+}
+
+/* 工业风装饰条 */
+.industrial-stripe {
+  position: relative;
+}
+
+.industrial-stripe::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--brand);
+  transition: width 0.2s ease;
+}
+
+.industrial-stripe:hover::before {
+  width: 6px;
+}
+
+/* 卡片悬停效果 */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='dark'] .card-hover:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* 品牌色高亮文本 */
+.text-brand-glow {
+  color: var(--brand);
+  text-shadow: 0 0 20px rgba(255, 250, 0, 0.5);
+}
+
+/* 数据网格装饰 */
+.data-grid-bg {
+  background-image: 
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+}

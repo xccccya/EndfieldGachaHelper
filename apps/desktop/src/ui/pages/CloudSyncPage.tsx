@@ -23,6 +23,9 @@ import {
   Users,
   Sword,
   EyeOff,
+  Trash2,
+  AlertTriangle,
+  UserX,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, ConfirmDialog, SyncAuthModal } from '../components';
 import { useSyncConfig, useSyncAuth, useSyncHealth, useAutoSync, useCloudSyncStatus } from '../../hooks/useSync';
@@ -32,10 +35,22 @@ export function CloudSyncPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { status, user, isLoggedIn, autoSync, lastSyncAt, syncError } = useSyncConfig();
-  const { logout, toggleAutoSync, manualSync, cleanupDuplicates } = useSyncAuth();
+  const { logout, toggleAutoSync, manualSync, cleanupDuplicates, deleteAllCloudData, deleteAccount } = useSyncAuth();
   const [syncing, setSyncing] = useState(false);
   const [cleaning, setCleaning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [cleanResult, setCleanResult] = useState<{ deleted: number } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    deleted: boolean;
+    accountsDeleted: number;
+    recordsDeleted: number;
+  } | null>(null);
+  const [deleteAccountResult, setDeleteAccountResult] = useState<{
+    deleted: boolean;
+    gameAccountsDeleted: number;
+    recordsDeleted: number;
+  } | null>(null);
   const [syncResult, setSyncResult] = useState<{
     success: boolean;
     uploaded: { characters: number; weapons: number };
@@ -50,6 +65,8 @@ export function CloudSyncPage() {
   // 弹窗状态
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false);
 
   // 支持外部（例如托盘菜单）触发：打开云同步页后直接弹出登录弹窗
   useEffect(() => {
@@ -101,6 +118,37 @@ export function CloudSyncPage() {
       setCleaning(false);
     }
   }, [cleanupDuplicates, refreshCloudStatus]);
+
+  // 处理删除所有云端数据
+  const handleDeleteAll = useCallback(async () => {
+    setDeleting(true);
+    setDeleteResult(null);
+    try {
+      const result = await deleteAllCloudData();
+      setDeleteResult(result);
+      // 删除后刷新云端状态
+      if (result.deleted) {
+        void refreshCloudStatus();
+      }
+    } finally {
+      setDeleting(false);
+      setDeleteAllDialogOpen(false);
+    }
+  }, [deleteAllCloudData, refreshCloudStatus]);
+
+  // 处理注销账号
+  const handleDeleteAccount = useCallback(async () => {
+    setDeletingAccount(true);
+    setDeleteAccountResult(null);
+    try {
+      const result = await deleteAccount();
+      setDeleteAccountResult(result);
+      // 注销成功后会自动退出登录（在 hook 中处理）
+    } finally {
+      setDeletingAccount(false);
+      setDeleteAccountDialogOpen(false);
+    }
+  }, [deleteAccount]);
   
   // 清除同步结果提示（5秒后自动清除）
   useEffect(() => {
@@ -117,6 +165,22 @@ export function CloudSyncPage() {
       return () => clearTimeout(timer);
     }
   }, [cleanResult]);
+
+  // 清除删除结果提示（5秒后自动清除）
+  useEffect(() => {
+    if (deleteResult) {
+      const timer = setTimeout(() => setDeleteResult(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteResult]);
+
+  // 清除注销账号结果提示（5秒后自动清除）
+  useEffect(() => {
+    if (deleteAccountResult) {
+      const timer = setTimeout(() => setDeleteAccountResult(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteAccountResult]);
   
   // 状态文本
   const statusText = {
@@ -156,6 +220,32 @@ export function CloudSyncPage() {
         icon={<LogOut size={18} />}
         onCancel={() => setLogoutDialogOpen(false)}
         onConfirm={() => { void handleLogout(); }}
+      />
+      
+      {/* 删除所有云端数据确认弹窗 */}
+      <ConfirmDialog
+        open={deleteAllDialogOpen}
+        title={t('cloudSync.deleteAllTitle', '删除所有云端数据')}
+        description={t('cloudSync.deleteAllDesc', '此操作将永久删除您在云端的所有抽卡记录和游戏账号数据。此操作不可撤销！本地数据不受影响。')}
+        confirmText={deleting ? t('cloudSync.deleting', '删除中...') : t('cloudSync.confirmDelete', '确认删除')}
+        cancelText={t('common.cancel')}
+        danger
+        icon={<AlertTriangle size={18} />}
+        onCancel={() => setDeleteAllDialogOpen(false)}
+        onConfirm={() => { void handleDeleteAll(); }}
+      />
+      
+      {/* 注销账号确认弹窗 */}
+      <ConfirmDialog
+        open={deleteAccountDialogOpen}
+        title={t('cloudSync.deleteAccountTitle', '注销账号')}
+        description={t('cloudSync.deleteAccountDesc', '此操作将永久删除您的同步账号及所有云端数据（包括游戏账号和抽卡记录）。此操作不可撤销！注销后将自动退出登录。')}
+        confirmText={deletingAccount ? t('cloudSync.deletingAccount', '注销中...') : t('cloudSync.confirmDeleteAccount', '确认注销')}
+        cancelText={t('common.cancel')}
+        danger
+        icon={<UserX size={18} />}
+        onCancel={() => setDeleteAccountDialogOpen(false)}
+        onConfirm={() => { void handleDeleteAccount(); }}
       />
       
       {/* 服务状态 */}
@@ -384,6 +474,72 @@ export function CloudSyncPage() {
                     <span>{syncError}</span>
                   </div>
                 )}
+              </div>
+              
+              {/* 危险操作区域 */}
+              <div className="p-4 rounded-md border border-red-500/30 bg-red-500/5 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-red-400">
+                  <AlertTriangle size={16} />
+                  <span>{t('cloudSync.dangerZone', '危险操作')}</span>
+                </div>
+                <p className="text-xs text-fg-2">
+                  {t('cloudSync.dangerZoneDesc', '以下操作不可撤销，请谨慎操作')}
+                </p>
+                
+                {/* 删除所有云端数据按钮 */}
+                <Button
+                  variant="ghost"
+                  onClick={() => setDeleteAllDialogOpen(true)}
+                  disabled={deleting}
+                  className="w-full text-red-400 hover:bg-red-500/10 border border-red-500/30"
+                  icon={deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                >
+                  {deleting ? t('cloudSync.deleting', '删除中...') : t('cloudSync.deleteAllData', '删除所有云端数据')}
+                </Button>
+                
+                {/* 删除结果提示 */}
+                {deleteResult && (
+                  <div className={`flex items-center gap-2 p-2 rounded-md text-sm ${
+                    deleteResult.deleted 
+                      ? 'bg-green-500/10 text-green-400' 
+                      : 'bg-red-500/10 text-red-400'
+                  }`}>
+                    {deleteResult.deleted ? (
+                      <>
+                        <CheckCircle2 size={14} />
+                        <span>
+                          {t('cloudSync.deleteSuccess', '已删除 {{accounts}} 个账号, {{records}} 条记录', {
+                            accounts: deleteResult.accountsDeleted,
+                            records: deleteResult.recordsDeleted,
+                          })}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle size={14} />
+                        <span>{t('cloudSync.deleteFailed', '删除失败')}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                {/* 分隔线 */}
+                <div className="border-t border-red-500/20 pt-3">
+                  <p className="text-xs text-fg-2 mb-3">
+                    {t('cloudSync.deleteAccountWarning', '注销账号将永久删除您的同步账号，此操作无法恢复')}
+                  </p>
+                  
+                  {/* 注销账号按钮 */}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setDeleteAccountDialogOpen(true)}
+                    disabled={deletingAccount}
+                    className="w-full text-red-400 hover:bg-red-500/10 border border-red-500/30"
+                    icon={deletingAccount ? <Loader2 size={16} className="animate-spin" /> : <UserX size={16} />}
+                  >
+                    {deletingAccount ? t('cloudSync.deletingAccount', '注销中...') : t('cloudSync.deleteAccount', '注销账号')}
+                  </Button>
+                </div>
               </div>
               
               {/* 登出按钮 */}

@@ -25,6 +25,7 @@ import {
   Info,
   PanelLeftClose,
   PanelLeftOpen,
+  Trophy,
 } from 'lucide-react';
 import { setTheme, useTheme } from '../theme';
 import { useAccounts } from '../../hooks/useEndfield';
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
   { path: '/sync', labelKey: 'nav.sync', icon: <RefreshCw size={20} /> },
   { path: '/account', labelKey: 'nav.account', icon: <UserPlus size={20} /> },
   { path: '/cloud-sync', labelKey: 'nav.cloudSync', icon: <Cloud size={20} /> },
+  { path: '/leaderboard', labelKey: 'nav.leaderboard', icon: <Trophy size={20} /> },
   { path: '/settings', labelKey: 'nav.settings', icon: <Settings size={20} /> },
   { path: '/about', labelKey: 'nav.about', icon: <Info size={20} /> },
 ];

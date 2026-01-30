@@ -1,0 +1,223 @@
+/* ============================================
+   动画关键帧（Keyframes）
+   ============================================ */
+
+/* 基础淡入 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 基础滑入 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 页面切换动效 - 滑动淡入 */
+@keyframes ef-page-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ef-page-fade-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* 页面切换动效 - 缩放淡入 */
+@keyframes ef-page-fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ef-page-fade-scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.01);
+  }
+}
+
+/* 页面切换动效 - 模糊淡入 */
+@keyframes ef-page-fade-blur-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes ef-page-fade-blur-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+    filter: blur(6px);
+  }
+}
+
+/* 品牌色脉动 */
+@keyframes pulse-brand {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 250, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 250, 0, 0);
+  }
+}
+
+/* 工业风闪烁动画（用于加载状态） */
+@keyframes industrial-flicker {
+  0% { opacity: 0.4; }
+  10% { opacity: 0.8; }
+  11% { opacity: 0.3; }
+  20% { opacity: 0.9; }
+  21% { opacity: 0.5; }
+  40% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Tab 面板切换动画 */
+@keyframes ef-tab-panel-in-right {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ef-tab-panel-in-left {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 主题切换按钮动画 */
+@keyframes ef-theme-toggle-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ef-theme-toggle-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    border-color: rgba(255, 250, 0, 0);
+    box-shadow: 0 0 0 rgba(255, 250, 0, 0);
+  }
+  35% {
+    opacity: 1;
+    border-color: rgba(255, 250, 0, 0.55);
+    box-shadow: 0 0 18px rgba(255, 250, 0, 0.18);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+    border-color: rgba(255, 250, 0, 0);
+    box-shadow: 0 0 0 rgba(255, 250, 0, 0);
+  }
+}
+
+/* 托盘菜单入场动画 */
+@keyframes tray-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 徽章脉动动画（背景渐变流动 + 微缩放） */
+@keyframes ef-badge-pulse {
+  0%, 100% {
+    background-position: 0% 50%;
+    transform: scale(1);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: scale(1.02);
+  }
+}
+
+/* 圆点脉动动画（发光呼吸）- 浅色模式 */
+@keyframes ef-dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 3px rgba(180, 120, 0, 0.50),
+      0 2px 6px rgba(0, 0, 0, 0.20);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.18);
+    box-shadow:
+      0 0 0 2px var(--bg-1),
+      0 0 0 4px rgba(180, 120, 0, 0.65),
+      0 4px 10px rgba(0, 0, 0, 0.28);
+  }
+}
+
+/* 圆点脉动动画 - 深色模式 */
+@keyframes ef-dot-pulse-dark {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2.5px var(--bg-1),
+      0 0 12px rgba(255, 250, 0, 0.60),
+      0 0 24px rgba(255, 250, 0, 0.25);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.2);
+    box-shadow:
+      0 0 0 2.5px var(--bg-1),
+      0 0 18px rgba(255, 250, 0, 0.80),
+      0 0 36px rgba(255, 250, 0, 0.35);
+  }
+}

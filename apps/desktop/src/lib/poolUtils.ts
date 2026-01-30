@@ -122,9 +122,7 @@ export function calculateArmoryQuota(records: UnifiedGachaRecord[]): number {
   let total = 0;
   
   for (const record of records) {
-    // 免费十连不计入武库配额
-    if (record.isFree) continue;
-    
+    // 所有记录（包括免费十连）都计入武库配额
     switch (record.rarity) {
       case 6:
         total += 2000;
@@ -163,9 +161,54 @@ export type PityStatus = {
   hasSixStarInPool: boolean;
 };
 
+// ==============================
+// 通用排序工具
+// ==============================
+
+/**
+ * 解析 seqId 为数字（用于排序）
+ * @param seqId 序列ID字符串
+ * @returns 数字形式的 seqId，解析失败返回 NaN
+ */
+function parseSeqId(seqId: string | undefined): number {
+  if (!seqId) return Number.NaN;
+  const n = Number(seqId);
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
+/**
+ * 按时间戳和 seqId 排序记录（时间正序）
+ * 
+ * 排序规则：
+ * 1. 首先按 gachaTs 时间戳升序排列
+ * 2. 时间戳相同时，按 seqId 升序排列（保证同一十连内的顺序正确）
+ * 3. seqId 也相同时，按 recordUid 字典序排列（兜底）
+ * 
+ * @param records 待排序的记录列表
+ * @returns 排序后的新数组（不修改原数组）
+ */
+export function sortRecordsByTimeAndSeq(records: UnifiedGachaRecord[]): UnifiedGachaRecord[] {
+  return [...records].sort((a, b) => {
+    // 1. 按时间戳排序
+    const ta = getTimestamp(a.gachaTs);
+    const tb = getTimestamp(b.gachaTs);
+    if (ta !== tb) return ta - tb;
+    
+    // 2. 时间戳相同时，按 seqId 排序
+    const sa = parseSeqId(a.seqId);
+    const sb = parseSeqId(b.seqId);
+    if (Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) {
+      return sa - sb;
+    }
+    
+    // 3. seqId 也相同或无效时，按 recordUid 字典序排列
+    return a.recordUid.localeCompare(b.recordUid);
+  });
+}
+
 /**
  * 计算保底状态
- * @param records 抽卡记录列表（同一个池子的记录，按时间正序排列）
+ * @param records 抽卡记录列表（同一个池子的记录）
  * @param poolConfig 池子配置
  * @returns 保底状态
  */
@@ -173,10 +216,8 @@ export function calculatePityStatus(
   records: UnifiedGachaRecord[],
   poolConfig: PoolConfig | null
 ): PityStatus {
-  // 按时间正序排列（最早的在前）
-  const sorted = [...records].sort((a, b) => 
-    getTimestamp(a.gachaTs) - getTimestamp(b.gachaTs)
-  );
+  // 按时间和 seqId 正序排列（最早的在前，同一十连内按 seqId 顺序）
+  const sorted = sortRecordsByTimeAndSeq(records);
   
   let pityTo6Star = 0;
   let pityTo5Star = 0;
@@ -230,10 +271,8 @@ export function calculatePityStatus(
  * @param records 抽卡记录列表（通常为所有 special_* 的角色记录，且已排除免费十连）
  */
 export function calculateSharedPityStatus(records: UnifiedGachaRecord[]): PityStatus {
-  // 按时间正序排列（最早的在前）
-  const sorted = [...records].sort((a, b) =>
-    getTimestamp(a.gachaTs) - getTimestamp(b.gachaTs)
-  );
+  // 按时间和 seqId 正序排列（最早的在前，同一十连内按 seqId 顺序）
+  const sorted = sortRecordsByTimeAndSeq(records);
 
   let pityTo6Star = 0;
   let pityTo5Star = 0;
@@ -373,25 +412,6 @@ export type WeaponPoolStatus = {
   } | undefined;
 };
 
-function parseSeqId(seqId: string | undefined): number {
-  if (!seqId) return Number.NaN;
-  const n = Number(seqId);
-  return Number.isFinite(n) ? n : Number.NaN;
-}
-
-function sortByTimeAndSeq(records: UnifiedGachaRecord[]): UnifiedGachaRecord[] {
-  return [...records].sort((a, b) => {
-    const ta = getTimestamp(a.gachaTs);
-    const tb = getTimestamp(b.gachaTs);
-    if (ta !== tb) return ta - tb;
-    const sa = parseSeqId(a.seqId);
-    const sb = parseSeqId(b.seqId);
-    if (Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) return sa - sb;
-    // fallback: recordUid
-    return a.recordUid.localeCompare(b.recordUid);
-  });
-}
-
 /**
  * 武库累计奖励节奏：
  * - 第 10 次：补充武库箱（box）
@@ -434,7 +454,7 @@ export function aggregateWeaponRecordsToSessions(
   records: UnifiedGachaRecord[],
   poolConfig: PoolConfig | null
 ): WeaponDrawSession[] {
-  const sorted = sortByTimeAndSeq(records);
+  const sorted = sortRecordsByTimeAndSeq(records);
   const byTs: Map<string, UnifiedGachaRecord[]> = new Map();
 
   for (const r of sorted) {
@@ -449,7 +469,7 @@ export function aggregateWeaponRecordsToSessions(
   const tsKeys = [...byTs.keys()].sort((a, b) => getTimestamp(a) - getTimestamp(b));
   for (const ts of tsKeys) {
     const bucket = byTs.get(ts)!;
-    const bucketSorted = sortByTimeAndSeq(bucket);
+    const bucketSorted = sortRecordsByTimeAndSeq(bucket);
     if (bucketSorted.length <= 11) {
       const sixStars = bucketSorted.filter((r) => r.rarity === 6);
       const hasUp6 = poolConfig ? sixStars.some((r) => isUpItem(r.itemName, poolConfig)) : false;

@@ -1,8 +1,9 @@
 export { RecordsPage } from './RecordsPage';
 export { SyncPage } from './SyncPage';
-export { StatsPage } from './StatsPage';
+export { StatsPage } from './StatsPage/index';
 export { AccountPage } from './AccountPage';
 export { SettingsPage } from './SettingsPage';
 export { CloudSyncPage } from './CloudSyncPage';
+export { LeaderboardPage } from './LeaderboardPage';
 export { AboutPage } from './AboutPage';
 export { TrayMenuPage } from './TrayMenuPage';

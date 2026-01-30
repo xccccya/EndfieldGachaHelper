@@ -1,0 +1,306 @@
+/* ============================================
+   侧边栏折叠/展开
+   ============================================ */
+
+.ef-sidebar {
+  width: 18rem; /* 72 */
+  will-change: width;
+  transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] {
+  width: 5rem; /* 80 */
+}
+
+.ef-sidebar-top {
+  padding: 12px;
+}
+
+/* 折叠按钮 */
+.ef-sidebar-toggle {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-2);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 6px 14px rgba(0, 0, 0, 0.08);
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar-toggle:hover {
+  background: var(--bg-3);
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.08),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+.ef-sidebar-toggle:active {
+  transform: translateY(0) scale(0.945);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 6px 12px rgba(0, 0, 0, 0.10);
+}
+
+/* 浅色模式折叠按钮 */
+html:not([data-theme='dark']) .ef-sidebar-toggle {
+  background: rgba(25, 25, 25, 0.04);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.06);
+}
+
+html:not([data-theme='dark']) .ef-sidebar-toggle:hover {
+  background: rgba(255, 250, 0, 0.10);
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.08);
+}
+
+html:not([data-theme='dark']) .ef-sidebar-toggle:active {
+  background: rgba(25, 25, 25, 0.06);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 8px 14px rgba(0, 0, 0, 0.07);
+}
+
+/* 深色模式折叠按钮 */
+html[data-theme='dark'] .ef-sidebar-toggle {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme='dark'] .ef-sidebar-toggle:hover {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 16px 36px rgba(0, 0, 0, 0.65);
+}
+
+.ef-sidebar-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(255, 250, 0, 0.22),
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* 导航项 */
+.ef-sidebar-nav-item {
+  display: grid;
+  grid-template-columns: 24px 1fr 16px;
+  column-gap: 12px;
+  align-items: center;
+  overflow: hidden;
+  transition: grid-template-columns 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    column-gap 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item {
+  grid-template-columns: 40px 0fr 0px;
+  column-gap: 0;
+  justify-content: center;
+}
+
+.ef-sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* 折叠态图标样式 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html:not([data-theme='dark']) .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:hover .ef-sidebar-icon {
+  background: rgba(25, 25, 25, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(25, 25, 25, 0.06);
+  transform: translateY(-1px);
+}
+
+html:not([data-theme='dark']) .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:active .ef-sidebar-icon {
+  transform: translateY(0) scale(0.945);
+  box-shadow: inset 0 0 0 1px rgba(25, 25, 25, 0.08);
+}
+
+html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:hover .ef-sidebar-icon {
+  background: var(--bg-3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item:active .ef-sidebar-icon {
+  transform: translateY(0) scale(0.945);
+}
+
+/* 折叠态选中状态 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[aria-current='page'] {
+  background: transparent !important;
+}
+
+html:not([data-theme='dark']) .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[aria-current='page'] .ef-sidebar-icon {
+  background: rgba(255, 250, 0, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 0, 0.22);
+}
+
+html[data-theme='dark'] .ef-sidebar[data-collapsed='true'] .ef-sidebar-nav-item[aria-current='page'] .ef-sidebar-icon {
+  background: var(--bg-3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 0, 0.28),
+    inset 0 0 24px rgba(255, 250, 0, 0.06);
+}
+
+/* 导航标签 */
+.ef-sidebar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 40ms;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-label {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition-delay: 0ms;
+}
+
+.ef-sidebar-arrow {
+  justify-self: end;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-arrow {
+  display: none;
+}
+
+/* Footer：账号行 */
+.ef-sidebar-footer-item {
+  display: grid;
+  grid-template-columns: 36px 1fr 16px;
+  column-gap: 12px;
+  align-items: center;
+  overflow: hidden;
+  transition: grid-template-columns 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    column-gap 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-item {
+  grid-template-columns: 36px 0fr 0px;
+  column-gap: 0;
+  justify-content: center;
+}
+
+.ef-sidebar-footer-text {
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 40ms;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-text {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition-delay: 0ms;
+}
+
+.ef-sidebar-footer-arrow {
+  justify-self: end;
+}
+
+/* Footer：同步状态行 */
+.ef-sidebar-sync-item {
+  display: grid;
+  grid-template-columns: 1fr 16px;
+  column-gap: 10px;
+  align-items: center;
+  overflow: hidden;
+  padding-left: 16px;
+  padding-right: 16px;
+  transition: grid-template-columns 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    column-gap 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-item {
+  grid-template-columns: 1fr;
+  column-gap: 0;
+  justify-items: center;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.ef-sidebar-sync-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ef-sidebar-sync-text {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 160ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 40ms;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-text {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition-delay: 0ms;
+}
+
+.ef-sidebar-sync-arrow {
+  justify-self: end;
+}
+
+/* 折叠态同步文字隐藏 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-text {
+  display: none;
+}
+
+/* 折叠态底部区域调整 */
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-item {
+  padding-left: 12px;
+  padding-right: 12px;
+  justify-items: center;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-footer-arrow {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-item {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-icon {
+  justify-content: center;
+  gap: 0;
+}
+
+.ef-sidebar[data-collapsed='true'] .ef-sidebar-sync-arrow {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -113,11 +113,19 @@ export async function addGachaRecords(uid: string, newRecords: EndFieldCharInfo[
     category: 'character' as const,
   }));
 
-  // 排序：按时间倒序
+  // 排序：按时间和 seqId 倒序
   recordsToAdd.sort((a, b) => {
     const timeA = getTimestamp(a.gachaTs);
     const timeB = getTimestamp(b.gachaTs);
-    return timeB - timeA;
+    if (timeA !== timeB) return timeB - timeA;
+    
+    // 时间相同时，按 seqId 倒序
+    const seqA = Number(a.seqId);
+    const seqB = Number(b.seqId);
+    if (Number.isFinite(seqA) && Number.isFinite(seqB)) {
+      return seqB - seqA;
+    }
+    return 0;
   });
 
   const dbRecords = recordsToAdd.map(gachaRecordToDB);

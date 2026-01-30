@@ -22,6 +22,7 @@ export function useSyncConfig() {
     status,
     user: config.user,
     isLoggedIn: !!config.user && !!config.accessToken,
+    accessToken: config.accessToken,
     autoSync: config.autoSync,
     lastSyncAt: config.lastSyncAt,
     lastCheckedAt: config.lastCheckedAt,

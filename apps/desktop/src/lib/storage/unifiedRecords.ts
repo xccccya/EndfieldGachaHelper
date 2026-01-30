@@ -8,6 +8,42 @@ import type { GachaRecord, WeaponRecord, UnifiedGachaRecord, GachaStats } from '
 import { getGachaRecords } from './gachaRecords';
 import { getWeaponRecords } from './weaponRecords';
 
+/**
+ * 按时间戳和 seqId 排序（时间倒序，用于显示）
+ */
+function sortRecordsDescending(records: UnifiedGachaRecord[]): void {
+  records.sort((a, b) => {
+    const ta = getTimestamp(a.gachaTs);
+    const tb = getTimestamp(b.gachaTs);
+    if (ta !== tb) return tb - ta;
+    
+    const sa = Number(a.seqId);
+    const sb = Number(b.seqId);
+    if (Number.isFinite(sa) && Number.isFinite(sb)) {
+      return sb - sa;
+    }
+    return 0;
+  });
+}
+
+/**
+ * 按时间戳和 seqId 排序（时间正序，用于计算）
+ */
+function sortRecordsAscending(records: UnifiedGachaRecord[]): UnifiedGachaRecord[] {
+  return [...records].sort((a, b) => {
+    const ta = getTimestamp(a.gachaTs);
+    const tb = getTimestamp(b.gachaTs);
+    if (ta !== tb) return ta - tb;
+    
+    const sa = Number(a.seqId);
+    const sb = Number(b.seqId);
+    if (Number.isFinite(sa) && Number.isFinite(sb)) {
+      return sa - sb;
+    }
+    return 0;
+  });
+}
+
 // ============== 统一记录转换 ==============
 
 /**
@@ -71,12 +107,8 @@ export async function getAllUnifiedRecords(uid?: string): Promise<UnifiedGachaRe
     ...weaponRecords.map(weaponRecordToUnified),
   ];
 
-  // 按时间排序（最新的在前）
-  all.sort((a, b) => {
-    const timeA = getTimestamp(a.gachaTs);
-    const timeB = getTimestamp(b.gachaTs);
-    return timeB - timeA;
-  });
+  // 按时间和 seqId 排序（最新的在前）
+  sortRecordsDescending(all);
 
   return all;
 }
@@ -131,12 +163,8 @@ export function calculateUnifiedStats(records: UnifiedGachaRecord[], options?: {
   let last6Star: UnifiedGachaRecord | undefined;
   let pity = 0;
 
-  // 按时间正序计算保底
-  const sorted = [...filtered].sort((a, b) => {
-    const timeA = getTimestamp(a.gachaTs);
-    const timeB = getTimestamp(b.gachaTs);
-    return timeA - timeB;
-  });
+  // 按时间和 seqId 正序计算保底
+  const sorted = sortRecordsAscending(filtered);
 
   for (const record of sorted) {
     byRarity[record.rarity] = (byRarity[record.rarity] || 0) + 1;

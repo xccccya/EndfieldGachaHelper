@@ -1,0 +1,57 @@
+/* ============================================
+   主题切换按钮
+   ============================================ */
+
+.ef-theme-toggle {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  outline: none;
+  /* 浅色模式：更明显的底色与层次（不加边框） */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(0, 0, 0, 0.04) 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.85) inset;
+}
+
+html[data-theme='dark'] .ef-theme-toggle {
+  /* 深色模式：独立皮肤，不复用浅色参数 */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.14) 100%);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.ef-theme-toggle:hover {
+  filter: brightness(1.03);
+}
+
+.ef-theme-toggle:active {
+  filter: brightness(0.98);
+}
+
+.ef-theme-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 250, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ef-theme-toggle--animating {
+  animation: ef-theme-toggle-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ef-theme-toggle--animating::after {
+  animation: ef-theme-toggle-ring 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-theme-toggle--animating,
+  .ef-theme-toggle--animating::after {
+    animation: none !important;
+  }
+}

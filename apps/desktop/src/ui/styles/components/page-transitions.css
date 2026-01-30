@@ -1,0 +1,137 @@
+/* ============================================
+   页面切换动效
+   ============================================ */
+
+/* 页面切换容器 */
+.ef-page-transition {
+  min-height: 0; /* 允许作为 flex 子项正确滚动 */
+  will-change: transform, opacity, filter;
+}
+
+.ef-page-transition--exit,
+.ef-page-transition--enter {
+  pointer-events: none; /* 动画中避免误触 */
+}
+
+/* 滑动淡入 */
+.ef-page-transition--enter.ef-page-transition--fade-slide {
+  animation: ef-page-fade-slide-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ef-page-transition--exit.ef-page-transition--fade-slide {
+  animation: ef-page-fade-slide-out 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* 缩放淡入 */
+.ef-page-transition--enter.ef-page-transition--fade-scale {
+  animation: ef-page-fade-scale-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ef-page-transition--exit.ef-page-transition--fade-scale {
+  animation: ef-page-fade-scale-out 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* 模糊淡入 */
+.ef-page-transition--enter.ef-page-transition--fade-blur {
+  animation: ef-page-fade-blur-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ef-page-transition--exit.ef-page-transition--fade-blur {
+  animation: ef-page-fade-blur-out 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-page-transition--exit,
+  .ef-page-transition--enter {
+    animation: none !important;
+  }
+}
+
+/* Tab 面板动效 */
+.ef-tab-panel {
+  will-change: opacity;
+}
+
+.ef-tab-panel--from-right {
+  animation: ef-tab-panel-in-right 0.35s ease-out;
+}
+
+.ef-tab-panel--from-left {
+  animation: ef-tab-panel-in-left 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-tab-panel--from-right,
+  .ef-tab-panel--from-left {
+    animation: none !important;
+  }
+}
+
+/* 折叠展开动效 */
+.ef-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  /* 收起：使用弹性缓动，略快 */
+  transition-property: grid-template-rows;
+  transition-duration: 280ms;
+  transition-timing-function: cubic-bezier(0.32, 0, 0.67, 0);
+  pointer-events: none; /* 折叠时避免误触内部控件 */
+}
+
+.ef-collapse[data-expanded='true'] {
+  grid-template-rows: 1fr;
+  /* 展开：使用更有弹性的缓动曲线 */
+  transition-duration: 380ms;
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: auto;
+}
+
+.ef-collapse__inner {
+  overflow: hidden;
+  will-change: transform, opacity, filter;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+  filter: blur(2px);
+  transition:
+    opacity 200ms ease-out,
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 200ms ease-out;
+}
+
+.ef-collapse[data-expanded='true'] .ef-collapse__inner {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  transition-delay: 30ms;
+}
+
+/* 收起状态的过渡优化 */
+.ef-collapse:not([data-expanded='true']) .ef-collapse__inner {
+  transition:
+    opacity 150ms ease-in,
+    transform 200ms cubic-bezier(0.32, 0, 0.67, 0),
+    filter 150ms ease-in;
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-collapse {
+    transition: none !important;
+    pointer-events: auto;
+  }
+
+  .ef-collapse__inner {
+    transition: none !important;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* 进度条加载动画 */
+.ef-progress-fill {
+  transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-progress-fill {
+    transition: none !important;
+  }
+}

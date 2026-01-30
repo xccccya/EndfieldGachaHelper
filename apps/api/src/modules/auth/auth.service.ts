@@ -274,6 +274,58 @@ export class AuthService {
     }
   }
 
+  /**
+   * 注销账号（删除用户及其所有关联数据）
+   * 危险操作：会永久删除用户账号、所有游戏账号、抽卡记录、refresh token 等
+   */
+  async deleteAccount(userId: string) {
+    // 1. 删除所有抽卡记录（通过游戏账号关联）
+    const gameAccounts = await this.prisma.gameAccount.findMany({
+      where: { userId },
+      select: { id: true },
+    });
+    
+    let totalRecordsDeleted = 0;
+    for (const account of gameAccounts) {
+      const result = await this.prisma.gachaRecord.deleteMany({
+        where: { gameAccountId: account.id },
+      });
+      totalRecordsDeleted += result.count;
+    }
+
+    // 2. 删除所有游戏账号
+    const gameAccountsResult = await this.prisma.gameAccount.deleteMany({
+      where: { userId },
+    });
+
+    // 3. 删除所有 refresh tokens
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
+
+    // 4. 删除与该邮箱相关的验证码记录
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (user) {
+      await this.prisma.verificationCode.deleteMany({
+        where: { email: user.email },
+      });
+    }
+
+    // 5. 删除用户账号
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return {
+      deleted: true,
+      gameAccountsDeleted: gameAccountsResult.count,
+      recordsDeleted: totalRecordsDeleted,
+    };
+  }
+
   private async findMatchingToken(
     candidates: Array<{ id: string; tokenHash: string; expiresAt: Date }>,
     token: string,

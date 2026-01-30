@@ -158,6 +158,14 @@ function PrivacyContent() {
             <span className="font-medium text-fg-0">3. </span>
             {t('legal.privacy.dataCollection3', '您的寻访历史数据将持续保存于本软件本地数据中，每次同步记录时采取增量方式进行刷新。若您需要删除数据，请在「设置」-「危险操作」内删除当前选中账号数据。')}
           </p>
+          <p>
+            <span className="font-medium text-fg-0">4. </span>
+            {t('legal.privacy.dataCollection4', '若您需要删除云端同步的所有寻访记录数据（保留同步账号），请前往「云同步」页面，在「危险操作」区域点击「删除所有云端数据」。此操作不可撤销，但不会影响本地数据。')}
+          </p>
+          <p>
+            <span className="font-medium text-fg-0">5. </span>
+            {t('legal.privacy.dataCollection5', '若您需要注销同步账号（同时删除云端所有数据），请前往「云同步」页面，在「危险操作」区域点击「注销账号」。注销后将自动退出登录，此操作不可撤销。')}
+          </p>
         </div>
       </section>
 
@@ -168,7 +176,7 @@ function PrivacyContent() {
         </h3>
         <div className="space-y-3 pl-3.5 border-l-2 border-border">
           <p>
-            <span className="font-medium text-fg-0">4. </span>
+            <span className="font-medium text-fg-0">6. </span>
             {t('legal.privacy.dataProtection1', '您上传至云同步服务器的数据，未经您的许可我们不会向第三方提供或披露，但以下情况除外：')}
           </p>
           <ul className="pl-6 space-y-1 text-fg-2">

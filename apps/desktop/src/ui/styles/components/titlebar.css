@@ -1,0 +1,122 @@
+/* ============================================
+   自定义窗口标题栏
+   ============================================ */
+
+.titlebar {
+  height: 38px;
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(180deg, #1a1a1a 0%, #141414 100%);
+  border-bottom: 1px solid rgba(255, 250, 0, 0.15);
+  user-select: none;
+  position: relative;
+  z-index: 9999;
+  flex-shrink: 0;
+}
+
+/* 拖拽区域 */
+.titlebar-drag-region {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+  cursor: default;
+}
+
+/* 品牌区域 */
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+/* Logo 容器 */
+.titlebar-logo {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  border-radius: 4px;
+  color: #000;
+  box-shadow: 0 0 12px rgba(255, 250, 0, 0.3);
+}
+
+/* 标题文字 */
+.titlebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.5px;
+}
+
+/* 窗口控制按钮容器 */
+.titlebar-controls {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+/* 窗口控制按钮基础样式 */
+.titlebar-button {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.titlebar-button:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+/* 最小化按钮 */
+.titlebar-button-minimize:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-button-minimize:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 最大化按钮 */
+.titlebar-button-maximize:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar-button-maximize:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 关闭按钮 - 特殊处理 */
+.titlebar-button-close:hover {
+  background: #e81123;
+  color: #fff;
+}
+
+.titlebar-button-close:active {
+  background: #bf0f1d;
+  color: #fff;
+}
+
+/* 亮色主题下的标题栏 */
+html:not([data-theme='dark']) .titlebar {
+  background: linear-gradient(180deg, #1f1f1f 0%, #171717 100%);
+}
+
+/* 标题栏底部装饰线 */
+.titlebar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--brand) 0%, transparent 100%);
+}

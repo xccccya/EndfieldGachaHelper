@@ -15,6 +15,8 @@ export type WeaponAvatarProps = {
   size?: 'sm' | 'md' | 'lg';
   /** 是否为UP武器（仅样式提示） */
   isUp?: boolean | undefined;
+  /** 是否显示"歪"标签（非UP的6星） */
+  showOffBanner?: boolean | undefined;
   /** 是否为空状态（显示问号或叉号） */
   isEmpty?: boolean | undefined;
   /** 空状态类型 */
@@ -40,6 +42,7 @@ export function WeaponAvatar({
   rarity = 6,
   size = 'md',
   isUp = false,
+  showOffBanner = false,
   isEmpty = false,
   emptyType = 'unknown',
   className = '',
@@ -96,6 +99,16 @@ export function WeaponAvatar({
           onError={() => setImgError(true)}
         />
       </div>
+
+      {/* "歪"标签 */}
+      {showOffBanner && !isUp && (
+        <div 
+          className="absolute -bottom-0.5 -right-0.5 bg-gradient-to-r from-red-500 to-orange-500 text-white text-[10px] font-bold px-1 py-0.5 rounded shadow-md"
+          style={{ fontSize: size === 'sm' ? '8px' : '10px' }}
+        >
+          歪
+        </div>
+      )}
 
       {isUp && (
         <div className="absolute -inset-0.5 rounded-full border-2 border-orange-400 animate-pulse pointer-events-none" />

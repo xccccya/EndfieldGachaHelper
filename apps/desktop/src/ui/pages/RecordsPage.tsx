@@ -142,11 +142,18 @@ export function RecordsPage() {
     const weaponUnified = weaponRecords.map(weaponRecordToUnified);
     const all = [...charUnified, ...weaponUnified];
     
-    // 按时间排序（最新的在前）
+    // 按时间和 seqId 排序（最新的在前）
     all.sort((a, b) => {
       const timeA = getTimestamp(a.gachaTs);
       const timeB = getTimestamp(b.gachaTs);
-      return timeB - timeA;
+      if (timeA !== timeB) return timeB - timeA;
+      
+      const seqA = Number(a.seqId);
+      const seqB = Number(b.seqId);
+      if (Number.isFinite(seqA) && Number.isFinite(seqB)) {
+        return seqB - seqA;
+      }
+      return 0;
     });
     
     return all;

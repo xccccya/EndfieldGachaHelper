@@ -8,6 +8,27 @@ import { getGachaRecords, saveGachaRecords } from './gachaRecords';
 import { getWeaponRecords, saveWeaponRecords } from './weaponRecords';
 import { notifyStorageChange } from './events';
 
+/**
+ * 按时间戳和 seqId 排序（时间倒序，seqId 倒序）
+ * 用于 CSV 导出和导入后的数据排序
+ */
+function sortRecordsDescending<T extends { gachaTs: string; seqId: string }>(records: T[]): void {
+  records.sort((a, b) => {
+    const ta = getTimestamp(a.gachaTs);
+    const tb = getTimestamp(b.gachaTs);
+    if (ta !== tb) return tb - ta; // 时间倒序
+
+    // 时间相同时，按 seqId 倒序
+    const sa = Number(a.seqId);
+    const sb = Number(b.seqId);
+    if (Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) {
+      return sb - sa;
+    }
+
+    return 0;
+  });
+}
+
 /** CSV 导出文件头（与软件数据结构对应） */
 const CSV_HEADERS = {
   character: [
@@ -254,8 +275,8 @@ export async function exportAllRecordsToCSV(uid?: string): Promise<string> {
     })),
   ];
 
-  // 按时间排序（最新的在前）
-  allRecords.sort((a, b) => getTimestamp(b.gachaTs) - getTimestamp(a.gachaTs));
+  // 按时间和 seqId 排序（最新的在前）
+  sortRecordsDescending(allRecords);
 
   for (const record of allRecords) {
     const row = [
@@ -428,7 +449,7 @@ export async function importRecordsFromCSV(csvContent: string): Promise<{
     }
 
     if (result.charRecords > 0) {
-      existing.sort((a, b) => getTimestamp(b.gachaTs) - getTimestamp(a.gachaTs));
+      sortRecordsDescending(existing);
       await saveGachaRecords(existing);
     }
   }
@@ -447,7 +468,7 @@ export async function importRecordsFromCSV(csvContent: string): Promise<{
     }
 
     if (result.weaponRecords > 0) {
-      existing.sort((a, b) => getTimestamp(b.gachaTs) - getTimestamp(a.gachaTs));
+      sortRecordsDescending(existing);
       await saveWeaponRecords(existing);
     }
   }

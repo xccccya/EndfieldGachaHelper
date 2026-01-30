@@ -432,6 +432,72 @@ export function useSyncAuth() {
     }
   }, [isLoggedIn, config.accessToken]);
 
+  /**
+   * 删除所有云端数据
+   * 危险操作：会永久删除当前账号的所有游戏账号和抽卡记录
+   */
+  const deleteAllCloudData = useCallback(async (): Promise<{
+    deleted: boolean;
+    accountsDeleted: number;
+    recordsDeleted: number;
+  }> => {
+    if (!isLoggedIn || !config.accessToken) {
+      return { deleted: false, accountsDeleted: 0, recordsDeleted: 0 };
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await syncApi.deleteAllCloudData(config.accessToken);
+      // 删除成功后，清除本地的同步时间记录
+      if (result.deleted) {
+        updateSyncConfig({
+          lastSyncAt: null,
+          lastCheckedAt: null,
+          syncError: null,
+        });
+      }
+      return result;
+    } catch (e) {
+      const message = e instanceof SyncApiError ? e.message : '删除失败';
+      setError(message);
+      return { deleted: false, accountsDeleted: 0, recordsDeleted: 0 };
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn, config.accessToken]);
+
+  /**
+   * 注销账号
+   * 危险操作：会永久删除用户账号及其所有关联数据，然后自动退出登录
+   */
+  const deleteAccount = useCallback(async (): Promise<{
+    deleted: boolean;
+    gameAccountsDeleted: number;
+    recordsDeleted: number;
+  }> => {
+    if (!isLoggedIn || !config.accessToken) {
+      return { deleted: false, gameAccountsDeleted: 0, recordsDeleted: 0 };
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await syncApi.deleteAccount(config.accessToken);
+      // 注销成功后，清除本地登录状态
+      if (result.deleted) {
+        saveSyncConfig(DEFAULT_SYNC_CONFIG);
+      }
+      return result;
+    } catch (e) {
+      const message = e instanceof SyncApiError ? e.message : '注销失败';
+      setError(message);
+      return { deleted: false, gameAccountsDeleted: 0, recordsDeleted: 0 };
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn, config.accessToken]);
+
   return {
     loading,
     error,
@@ -448,6 +514,8 @@ export function useSyncAuth() {
     setSyncError,
     manualSync,
     cleanupDuplicates,
+    deleteAllCloudData,
+    deleteAccount,
     isLoggedIn,
   };
 }

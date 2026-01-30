@@ -1,0 +1,64 @@
+/* ============================================
+   全局滚动条样式
+   支持 WebKit (Chrome/Edge) 和 Firefox
+   ============================================ */
+
+/* WebKit 滚动条 - 基础尺寸 */
+::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* 滚动条轨道 - 透明 */
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+/* 滚动条滑块 */
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.5) !important;
+  border-radius: 2px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 136, 136, 0.7) !important;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(136, 136, 136, 0.9) !important;
+}
+
+/* 隐藏滚动条上下箭头按钮 */
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 滚动条角落 */
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* 深色模式滚动条 */
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(154, 166, 195, 0.4) !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(154, 166, 195, 0.6) !important;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:active {
+  background: rgba(154, 166, 195, 0.8) !important;
+}
+
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(136, 136, 136, 0.5) transparent;
+}
+
+html[data-theme='dark'] * {
+  scrollbar-color: rgba(154, 166, 195, 0.4) transparent;
+}

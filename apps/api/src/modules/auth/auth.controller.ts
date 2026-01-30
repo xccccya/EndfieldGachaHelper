@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { CheckEmailDto, LoginDto, RefreshDto, RegisterDto, ResetPasswordDto, SendCodeDto } from './dto/auth.dto';
+import type { AuthenticatedRequest } from './auth.types';
 
 @ApiTags('auth')
 @Controller()
@@ -60,6 +61,14 @@ export class AuthController {
   me(@Req() req: FastifyRequest) {
     // JwtStrategy 里把 user 放到 req.user
     return { user: req.user };
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '注销账号（永久删除）' })
+  @Delete('auth/account')
+  deleteAccount(@Req() req: AuthenticatedRequest) {
+    return this.auth.deleteAccount(req.user.id);
   }
 }
 

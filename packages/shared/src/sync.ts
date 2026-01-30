@@ -203,3 +203,47 @@ export type SyncStatusInfo = {
 export type SyncStatusResponse = {
   accounts: SyncStatusInfo[];
 };
+
+// ============== 排行榜相关类型 ==============
+
+/** 排行榜类型 */
+export type LeaderboardType = 'total_pulls' | 'six_star_count' | 'off_banner_count';
+
+/** 排行榜条目 */
+export type LeaderboardEntry = {
+  rank: number;
+  displayUid: string;
+  region: string;
+  value: number;
+  uidHidden: boolean;
+};
+
+/** 排行榜响应 */
+export type LeaderboardResponse = {
+  type: LeaderboardType;
+  entries: LeaderboardEntry[];
+  updatedAt: string;
+  /** 当前用户在该榜单中的排名（如果参与且有数据） */
+  myRank?: number;
+  /** 当前用户在该榜单中的数值 */
+  myValue?: number;
+};
+
+/** 所有排行榜响应 */
+export type AllLeaderboardsResponse = {
+  totalPulls: LeaderboardResponse;
+  sixStarCount: LeaderboardResponse;
+  offBannerCount: LeaderboardResponse;
+};
+
+/** 排行榜设置 */
+export type LeaderboardSettings = {
+  participate: boolean;
+  hideUid: boolean;
+};
+
+/** 更新排行榜设置请求 */
+export type UpdateLeaderboardSettingsRequest = {
+  participate?: boolean;
+  hideUid?: boolean;
+};

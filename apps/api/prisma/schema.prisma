@@ -14,8 +14,9 @@ model User {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  refreshTokens RefreshToken[]
-  gameAccounts  GameAccount[]
+  refreshTokens       RefreshToken[]
+  gameAccounts        GameAccount[]
+  leaderboardSettings LeaderboardSettings?
 }
 
 model RefreshToken {
@@ -99,5 +100,47 @@ model VerificationCode {
   createdAt DateTime @default(now())
 
   @@index([email, type])
+}
+
+// 排行榜用户设置
+model LeaderboardSettings {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  /** 是否参与排行榜统计 */
+  participate Boolean  @default(false)
+  /** 是否在排行榜上隐藏UID（只显示后四位） */
+  hideUid     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 排行榜缓存（定时更新）
+model LeaderboardCache {
+  id             String   @id @default(cuid())
+  /** 排行类型：total_pulls=累计抽数, six_star_count=六星数, off_banner_count=歪数 */
+  type           String
+  /** 排名（1-based） */
+  rank           Int
+  /** 游戏账号ID */
+  gameAccountId  String
+  /** 关联的用户ID（冗余，方便查询） */
+  userId         String
+  /** UID（可能已隐藏） */
+  displayUid     String
+  /** 区服标识 */
+  region         String
+  /** 统计值（抽数/六星数/歪数） */
+  value          Int
+  /** 是否隐藏了UID */
+  uidHidden      Boolean  @default(false)
+  /** 缓存生成时间 */
+  cachedAt       DateTime @default(now())
+
+  @@unique([type, rank])
+  @@index([type])
+  @@index([gameAccountId])
+  @@index([userId])
 }
 

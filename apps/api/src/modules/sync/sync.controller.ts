@@ -112,4 +112,13 @@ export class SyncController {
   async cleanupDuplicates(@Request() req: AuthenticatedRequest) {
     return this.syncService.cleanupDuplicates(req.user.id);
   }
+
+  /**
+   * 删除用户的所有云端数据
+   * 危险操作：会永久删除所有游戏账号和抽卡记录
+   */
+  @Delete('all')
+  async deleteAllData(@Request() req: AuthenticatedRequest) {
+    return this.syncService.deleteAllUserData(req.user.id);
+  }
 }

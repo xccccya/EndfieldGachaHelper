@@ -256,17 +256,18 @@ export type DBGachaRecord = {
 
 /**
  * 获取角色抽卡记录
+ * 按 gacha_ts 和 seq_id 排序，确保同一十连内的记录顺序正确
  */
 export async function dbGetGachaRecords(uid?: string): Promise<DBGachaRecord[]> {
   const database = await getDB();
   if (uid) {
     return await database.select<DBGachaRecord[]>(
-      'SELECT * FROM gacha_records WHERE uid = $1 ORDER BY gacha_ts DESC',
+      'SELECT * FROM gacha_records WHERE uid = $1 ORDER BY gacha_ts DESC, seq_id DESC',
       [uid]
     );
   }
   return await database.select<DBGachaRecord[]>(
-    'SELECT * FROM gacha_records ORDER BY gacha_ts DESC'
+    'SELECT * FROM gacha_records ORDER BY gacha_ts DESC, seq_id DESC'
   );
 }
 
@@ -332,17 +333,18 @@ export type DBWeaponRecord = {
 
 /**
  * 获取武器抽卡记录
+ * 按 gacha_ts 和 seq_id 排序，确保同一十连内的记录顺序正确
  */
 export async function dbGetWeaponRecords(uid?: string): Promise<DBWeaponRecord[]> {
   const database = await getDB();
   if (uid) {
     return await database.select<DBWeaponRecord[]>(
-      'SELECT * FROM weapon_records WHERE uid = $1 ORDER BY gacha_ts DESC',
+      'SELECT * FROM weapon_records WHERE uid = $1 ORDER BY gacha_ts DESC, seq_id DESC',
       [uid]
     );
   }
   return await database.select<DBWeaponRecord[]>(
-    'SELECT * FROM weapon_records ORDER BY gacha_ts DESC'
+    'SELECT * FROM weapon_records ORDER BY gacha_ts DESC, seq_id DESC'
   );
 }
 

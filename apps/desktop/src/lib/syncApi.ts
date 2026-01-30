@@ -507,6 +507,44 @@ export const syncApi = {
       accessToken,
     });
   },
+
+  /**
+   * 删除所有云端数据
+   * 危险操作：会永久删除当前账号的所有游戏账号和抽卡记录
+   */
+  async deleteAllCloudData(accessToken: string): Promise<{
+    deleted: boolean;
+    accountsDeleted: number;
+    recordsDeleted: number;
+  }> {
+    return request<{
+      deleted: boolean;
+      accountsDeleted: number;
+      recordsDeleted: number;
+    }>('/sync/all', {
+      method: 'DELETE',
+      accessToken,
+    });
+  },
+
+  /**
+   * 注销账号
+   * 危险操作：会永久删除用户账号及其所有关联数据（游戏账号、抽卡记录等）
+   */
+  async deleteAccount(accessToken: string): Promise<{
+    deleted: boolean;
+    gameAccountsDeleted: number;
+    recordsDeleted: number;
+  }> {
+    return request<{
+      deleted: boolean;
+      gameAccountsDeleted: number;
+      recordsDeleted: number;
+    }>('/auth/account', {
+      method: 'DELETE',
+      accessToken,
+    });
+  },
 };
 
 export { SyncApiError };

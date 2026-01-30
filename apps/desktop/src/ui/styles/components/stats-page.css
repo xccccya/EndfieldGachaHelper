@@ -1,0 +1,204 @@
+/* ============================================
+   StatsPage 页面组件样式
+   ============================================ */
+
+/* 三段式筛选按钮 */
+.ef-seg-filter {
+  /* 浅色模式专属皮肤 */
+  background: rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='dark'] .ef-seg-filter {
+  /* 深色模式专属皮肤（不复用浅色参数） */
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 14px 28px rgba(0, 0, 0, 0.55);
+}
+
+.ef-seg-filter__indicator {
+  /* 浅色模式专属选中底座 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 0, 0.18) 0%,
+    rgba(255, 250, 0, 0.10) 100%
+  );
+  border: 1px solid rgba(255, 250, 0, 0.40);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.10),
+    0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+html[data-theme='dark'] .ef-seg-filter__indicator {
+  /* 深色模式专属选中底座（不复用浅色参数） */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 0, 0.20) 0%,
+    rgba(255, 250, 0, 0.12) 100%
+  );
+  border: 1px solid rgba(255, 250, 0, 0.52);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.60),
+    0 0 18px rgba(255, 250, 0, 0.16),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* 概览数字块 */
+.ef-stat-tile {
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.70) inset,
+    0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme='dark'] .ef-stat-tile {
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* 卡池卡片分割线 */
+.ef-pool-card-divider {
+  height: 1px;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  /* 浅色模式：柔和渐变分割线 */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.08) 15%,
+    rgba(0, 0, 0, 0.12) 50%,
+    rgba(0, 0, 0, 0.08) 85%,
+    transparent 100%
+  );
+}
+
+html[data-theme='dark'] .ef-pool-card-divider {
+  /* 深色模式：更亮的渐变分割线 + 微弱发光 */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 15%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.08) 85%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px rgba(255, 250, 0, 0.03);
+}
+
+/* 武库配额文案标签 */
+.ef-armory-quota-label {
+  /* 浅色模式：使用较深的灰色确保可读性 */
+  color: #555555;
+}
+
+html[data-theme='dark'] .ef-armory-quota-label {
+  /* 深色模式：使用更亮的颜色确保可读性 */
+  color: #d1d5db;
+}
+
+/* 武库配额数值 */
+.ef-armory-quota-value {
+  /* 浅色模式：青色 */
+  color: #22d3ee; /* cyan-400 */
+}
+
+html[data-theme='dark'] .ef-armory-quota-value {
+  /* 深色模式：黑色 */
+  color: #000000;
+}
+
+/* 进度条抽数标签动画 */
+.ef-pulls-label {
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition-delay: 0.15s; /* 稍微延迟，等进度条开始填充后再显示 */
+}
+
+/* 减少动画偏好用户 */
+@media (prefers-reduced-motion: reduce) {
+  .ef-pulls-label {
+    transition: none;
+    transition-delay: 0s;
+  }
+}
+
+/* ============================================
+   池卡片展开/收缩动画增强
+   ============================================ */
+
+/* 池卡片标题区域整体过渡 */
+.ef-pool-card-header {
+  transition: 
+    min-height 380ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    padding 300ms ease-out;
+}
+
+/* ChevronDown 箭头旋转动画优化 */
+.ef-pool-card-chevron {
+  transition: 
+    transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 200ms ease-out;
+}
+
+.ef-pool-card-chevron[data-expanded='true'] {
+  transform: rotate(180deg);
+}
+
+/* 标题文字大小过渡（展开/折叠时平滑切换） */
+.ef-pool-card-title {
+  transition: 
+    font-size 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    gap 300ms ease-out;
+}
+
+/* 统计标签过渡动画 */
+.ef-pool-card-stats {
+  transition: 
+    gap 300ms ease-out,
+    font-size 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 池卡片内容区域入场动画增强 */
+.ef-pool-card-content {
+  will-change: opacity, transform;
+}
+
+/* 内容区域子元素渐次入场效果 */
+.ef-collapse[data-expanded='true'] .ef-pool-card-content > * {
+  animation: ef-pool-content-item-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.ef-collapse[data-expanded='true'] .ef-pool-card-content > *:nth-child(1) { animation-delay: 0.04s; }
+.ef-collapse[data-expanded='true'] .ef-pool-card-content > *:nth-child(2) { animation-delay: 0.08s; }
+.ef-collapse[data-expanded='true'] .ef-pool-card-content > *:nth-child(3) { animation-delay: 0.12s; }
+.ef-collapse[data-expanded='true'] .ef-pool-card-content > *:nth-child(4) { animation-delay: 0.16s; }
+.ef-collapse[data-expanded='true'] .ef-pool-card-content > *:nth-child(5) { animation-delay: 0.20s; }
+
+@keyframes ef-pool-content-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-pool-card-header,
+  .ef-pool-card-chevron,
+  .ef-pool-card-title,
+  .ef-pool-card-stats {
+    transition: none !important;
+  }
+  
+  .ef-collapse[data-expanded='true'] .ef-pool-card-content > * {
+    animation: none !important;
+  }
+}

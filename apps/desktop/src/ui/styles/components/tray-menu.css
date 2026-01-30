@@ -1,0 +1,40 @@
+/* ============================================
+   托盘菜单窗口样式
+   ============================================ */
+
+/* 托盘菜单容器 - 透明背景 */
+.tray-menu-root {
+  background: transparent !important;
+  min-height: 100%;
+  width: 100%;
+}
+
+/* 托盘菜单窗口（独立 webview） */
+html.tray-menu-window,
+html.tray-menu-window body {
+  background: transparent !important;
+}
+
+html.tray-menu-window body {
+  overflow: hidden !important;
+}
+
+html.tray-menu-window #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 托盘菜单窗口隐藏滚动条 */
+html.tray-menu-window ::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html.tray-menu-window * {
+  scrollbar-width: none;
+}
+
+/* 托盘菜单入场动画 */
+.tray-menu-animate {
+  animation: tray-menu-enter 0.15s ease-out;
+}

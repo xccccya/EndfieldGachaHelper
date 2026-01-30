@@ -350,6 +350,41 @@ export class SyncService {
   }
 
   /**
+   * 删除用户的所有云端数据（包括所有游戏账号和抽卡记录）
+   * 这是一个危险操作，会永久删除数据
+   */
+  async deleteAllUserData(userId: string) {
+    // 获取用户的所有游戏账号
+    const accounts = await this.prisma.gameAccount.findMany({
+      where: { userId },
+    });
+
+    let totalRecordsDeleted = 0;
+    let totalAccountsDeleted = 0;
+
+    // 删除每个账号及其关联的抽卡记录
+    for (const account of accounts) {
+      // 先删除抽卡记录
+      const deleteResult = await this.prisma.gachaRecord.deleteMany({
+        where: { gameAccountId: account.id },
+      });
+      totalRecordsDeleted += deleteResult.count;
+
+      // 再删除游戏账号
+      await this.prisma.gameAccount.delete({
+        where: { id: account.id },
+      });
+      totalAccountsDeleted++;
+    }
+
+    return {
+      deleted: true,
+      accountsDeleted: totalAccountsDeleted,
+      recordsDeleted: totalRecordsDeleted,
+    };
+  }
+
+  /**
    * 清理重复记录
    * 基于 gameAccountId + seqId + category 去重，保留最新的一条
    */
