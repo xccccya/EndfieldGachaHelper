@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -21,10 +21,47 @@ const UP_POOL_KEYWORDS = ['限定', '精选', 'Pick Up', 'Featured'];
 const WEAPON_POOL_KEYWORDS = ['武器', 'Weapon', '装备', 'Equipment'];
 
 @Injectable()
-export class LeaderboardService {
+export class LeaderboardService implements OnModuleInit {
   private readonly logger = new Logger(LeaderboardService.name);
 
+  /**
+   * 存储每种排行榜类型的真实更新时间
+   * 用于在没有数据时也能返回正确的更新时间
+   */
+  private lastUpdatedAt: Map<string, Date> = new Map();
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 模块初始化时从数据库加载排行榜的最后更新时间
+   */
+  async onModuleInit() {
+    await this.loadLastUpdatedAt();
+  }
+
+  /**
+   * 从数据库中恢复每种排行榜的最后更新时间
+   */
+  private async loadLastUpdatedAt() {
+    const types = [
+      LeaderboardType.TOTAL_PULLS,
+      LeaderboardType.SIX_STAR_COUNT,
+      LeaderboardType.OFF_BANNER_COUNT,
+    ];
+
+    for (const type of types) {
+      const latest = await this.prisma.leaderboardCache.findFirst({
+        where: { type },
+        orderBy: { cachedAt: 'desc' },
+        select: { cachedAt: true },
+      });
+
+      if (latest) {
+        this.lastUpdatedAt.set(type, latest.cachedAt);
+        this.logger.log(`已加载 ${type} 排行榜最后更新时间: ${latest.cachedAt.toISOString()}`);
+      }
+    }
+  }
 
   // ============== 用户设置管理 ==============
 
@@ -84,9 +121,10 @@ export class LeaderboardService {
       take: Math.min(limit, MAX_LEADERBOARD_SIZE),
     });
 
-    // 获取缓存更新时间
-    const latestEntry = entries[0];
-    const updatedAt = latestEntry?.cachedAt?.toISOString() ?? new Date().toISOString();
+    // 从内存中获取真实的排行榜更新时间
+    // 即使排行榜为空，也返回最后一次定时任务执行的时间
+    const cachedUpdatedAt = this.lastUpdatedAt.get(type);
+    const updatedAt = cachedUpdatedAt?.toISOString() ?? null;
 
     const result: LeaderboardResponse = {
       type,
@@ -373,6 +411,9 @@ export class LeaderboardService {
   ) {
     const now = new Date();
 
+    // 更新内存中的最后更新时间
+    this.lastUpdatedAt.set(type, now);
+
     // 清除旧数据
     await this.prisma.leaderboardCache.deleteMany({
       where: { type },
@@ -400,6 +441,11 @@ export class LeaderboardService {
    * 清空指定类型的排行榜
    */
   private async clearLeaderboard(type: LeaderboardType) {
+    const now = new Date();
+
+    // 更新内存中的最后更新时间（即使清空也记录时间）
+    this.lastUpdatedAt.set(type, now);
+
     await this.prisma.leaderboardCache.deleteMany({
       where: { type },
     });

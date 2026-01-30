@@ -222,7 +222,8 @@ export type LeaderboardEntry = {
 export type LeaderboardResponse = {
   type: LeaderboardType;
   entries: LeaderboardEntry[];
-  updatedAt: string;
+  /** 排行榜数据的真实更新时间（后端定时任务执行时间），null 表示从未更新 */
+  updatedAt: string | null;
   /** 当前用户在该榜单中的排名（如果参与且有数据） */
   myRank?: number;
   /** 当前用户在该榜单中的数值 */
