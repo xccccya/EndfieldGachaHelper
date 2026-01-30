@@ -12,13 +12,55 @@ import {
 // 常量定义
 const MAX_LEADERBOARD_SIZE = 100;
 
-// UP 池名称关键词（用于判断是否为限定池）
-// 角色限定池和武器池都参与歪的统计
-// 常驻池的6星不算歪
-const UP_POOL_KEYWORDS = ['限定', '精选', 'Pick Up', 'Featured'];
+/**
+ * 卡池 UP 物品映射表
+ *
+ * 用于判断六星是否"歪"（即抽到非 UP 的六星）
+ * 需要手动维护：每次新增限定池/武器池时，需要在此添加对应的 poolId → up6Name 映射
+ *
+ * 数据来源：apps/desktop/public/content/{poolId}/data.json 中的 pool.up6_name
+ */
+const POOL_UP_MAP: Record<string, string> = {
+  // ============== 角色限定池（特许寻访） ==============
+  // poolId 格式: special_{version}_{subversion}_{index}
+  'special_1_0_1': '莱万汀',
 
-// 武器池名称关键词（武器池都算限定池，全部参与歪的统计）
-const WEAPON_POOL_KEYWORDS = ['武器', 'Weapon', '装备', 'Equipment'];
+  // ============== 武器限定池（与角色限定池关联） ==============
+  // poolId 格式: weponbox_{version}_{subversion}_{index}（注意：API 返回的是 weponbox 而非 weaponbox）
+  'weponbox_1_0_1': '熔铸火焰',
+
+  // ============== 武器常驻池 ==============
+  // poolId 格式: weaponbox_constant_{index}
+  'weaponbox_constant_1': '赫拉芬格',
+  'weaponbox_constant_2': '沧溟星梦',
+  'weaponbox_constant_3': '不知归',
+  'weaponbox_constant_4': '负山',
+  'weaponbox_constant_5': '大雷斑',
+};
+
+/**
+ * 判断 poolId 是否为角色限定池（特许寻访）
+ * 只有特许寻访池中抽到非 UP 角色才算"歪"
+ */
+function isCharacterUpPool(poolId: string): boolean {
+  return poolId.startsWith('special_');
+}
+
+/**
+ * 判断 poolId 是否为武器池
+ * 武器池中抽到非 UP 武器算"歪"
+ */
+function isWeaponPool(poolId: string): boolean {
+  // 兼容两种拼写：weponbox（API 实际返回）和 weaponbox（常驻池）
+  return poolId.includes('weponbox') || poolId.includes('weaponbox');
+}
+
+/**
+ * 获取指定 poolId 的 UP 物品名称
+ */
+function getPoolUpName(poolId: string): string | null {
+  return POOL_UP_MAP[poolId] ?? null;
+}
 
 @Injectable()
 export class LeaderboardService implements OnModuleInit {
@@ -329,18 +371,16 @@ export class LeaderboardService implements OnModuleInit {
     const accountIds = accounts.map((a) => a.id);
 
     // 获取所有六星记录（角色池和武器池都统计）
-    // 歪的判断逻辑：在限定池中抽到的六星，但物品名不在池名中出现
     const sixStarRecords = await this.prisma.gachaRecord.findMany({
       where: {
         gameAccountId: { in: accountIds },
         rarity: 6,
-        // 同时统计角色池和武器池
         category: { in: ['character', 'weapon'] },
       },
       select: {
         gameAccountId: true,
         category: true,
-        poolName: true,
+        poolId: true,
         itemName: true,
       },
     });
@@ -349,23 +389,25 @@ export class LeaderboardService implements OnModuleInit {
     const offBannerCounts = new Map<string, number>();
 
     for (const record of sixStarRecords) {
-      // 判断是否为限定池
-      // 角色池：需要包含限定关键词
-      // 武器池：所有武器池都算限定池
-      const isCharacterUpPool =
-        record.category === 'character' &&
-        UP_POOL_KEYWORDS.some((kw) => record.poolName.includes(kw));
+      // 通过 poolId 前缀判断池类型
+      const isUpPool =
+        (record.category === 'character' && isCharacterUpPool(record.poolId)) ||
+        (record.category === 'weapon' && isWeaponPool(record.poolId));
 
-      const isWeaponPool =
-        record.category === 'weapon' &&
-        WEAPON_POOL_KEYWORDS.some((kw) => record.poolName.includes(kw));
+      // 如果不是限定池/武器池，跳过（常驻池的六星不算歪）
+      if (!isUpPool) continue;
 
-      // 如果不是限定池（角色限定池或武器池），跳过
-      if (!isCharacterUpPool && !isWeaponPool) continue;
+      // 获取该池的 UP 物品名称
+      const upName = getPoolUpName(record.poolId);
 
-      // 判断是否歪：如果物品名不在池名中，则为歪
-      // 假设池名包含UP物品名（如"艾雅法拉限定寻访"包含"艾雅法拉"）
-      const isOffBanner = !record.poolName.includes(record.itemName);
+      // 判断是否歪：如果抽到的物品不是 UP 物品，则为歪
+      // 注意：如果该 poolId 不在映射表中（upName 为 null），则无法判断，跳过
+      if (!upName) {
+        this.logger.warn(`未知的 poolId: ${record.poolId}，无法判断是否歪`);
+        continue;
+      }
+
+      const isOffBanner = record.itemName !== upName;
 
       if (isOffBanner) {
         const current = offBannerCounts.get(record.gameAccountId) ?? 0;
@@ -463,24 +505,33 @@ export class LeaderboardService implements OnModuleInit {
 
   /**
    * 格式化区服显示
-   * 根据 serverId 判断：
-   * - serverId = 1 → 国服
-   * - serverId = 2 或 3 → 国际服
+   *
+   * region 字段的可能格式：
+   * - 国服：serverId（如 "1"）
+   * - 国际服：serverId（如 "2", "3"）或 "gryphline@{serverId}"（如 "gryphline@2"）
+   *
+   * 客户端为避免国服/国际服 serverId 冲突，会将国际服编码为 "gryphline@{serverId}" 格式
    */
   private formatRegion(region: string): string {
-    // region 存储的是 serverId
-    const serverId = region.trim();
+    const value = region.trim();
 
-    // 根据 serverId 判断
-    if (serverId === '1') {
+    // 国际服：gryphline@{serverId} 格式（客户端为区分国服/国际服而编码）
+    if (value.startsWith('gryphline@')) {
+      return '国际服';
+    }
+
+    // 国服：serverId = 1
+    if (value === '1') {
       return '国服';
     }
-    if (serverId === '2' || serverId === '3') {
+
+    // 国际服：serverId = 2 或 3
+    if (value === '2' || value === '3') {
       return '国际服';
     }
 
     // 兼容旧数据格式（可能包含文字描述）
-    const regionLower = region.toLowerCase();
+    const regionLower = value.toLowerCase();
     if (regionLower.includes('cn') || regionLower.includes('bili') || regionLower.includes('官服')) {
       return '国服';
     }
@@ -488,6 +539,6 @@ export class LeaderboardService implements OnModuleInit {
       return '国际服';
     }
 
-    return region || '未知';
+    return value || '未知';
   }
 }
