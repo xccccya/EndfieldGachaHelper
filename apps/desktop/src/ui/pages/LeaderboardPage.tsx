@@ -179,23 +179,23 @@ function Pagination({
   }, [currentPage, totalPages]);
 
   return (
-    <div className="flex items-center justify-center gap-1 py-2.5">
+    <div className="flex items-center justify-center gap-1.5 py-3 px-2">
       {/* 上一页 */}
       <button
         type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="w-7 h-7 flex items-center justify-center rounded-md text-fg-2 hover:text-fg-0 hover:bg-bg-2 disabled:opacity-25 disabled:cursor-not-allowed"
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-fg-2 hover:text-fg-0 hover:bg-bg-2/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
         aria-label={t('leaderboard.prevPage', '上一页')}
       >
-        <ChevronLeft size={15} />
+        <ChevronLeft size={16} />
       </button>
 
       {/* 页码 */}
       {pages.map((page, i) =>
         page === 'ellipsis' ? (
-          <span key={`e-${i}`} className="w-7 h-7 flex items-center justify-center text-fg-2 text-xs select-none">
-            …
+          <span key={`e-${i}`} className="w-8 h-8 flex items-center justify-center text-fg-2/50 text-sm select-none">
+            ···
           </span>
         ) : (
           <button
@@ -203,10 +203,11 @@ function Pagination({
             type="button"
             onClick={() => onPageChange(page)}
             className={`
-              w-7 h-7 flex items-center justify-center rounded-md text-sm font-medium
+              min-w-[32px] h-8 px-2.5 flex items-center justify-center rounded-lg text-sm font-medium
+              transition-all duration-150 select-none border
               ${currentPage === page
-                ? 'bg-brand text-black'
-                : 'text-fg-2 hover:text-fg-0 hover:bg-bg-2'
+                ? 'bg-blue-500/15 text-blue-500 border-blue-500/30'
+                : 'text-fg-2 border-transparent hover:text-fg-0 hover:bg-bg-2/60'
               }
             `}
           >
@@ -220,10 +221,10 @@ function Pagination({
         type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="w-7 h-7 flex items-center justify-center rounded-md text-fg-2 hover:text-fg-0 hover:bg-bg-2 disabled:opacity-25 disabled:cursor-not-allowed"
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-fg-2 hover:text-fg-0 hover:bg-bg-2/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
         aria-label={t('leaderboard.nextPage', '下一页')}
       >
-        <ChevronRight size={15} />
+        <ChevronRight size={16} />
       </button>
     </div>
   );
