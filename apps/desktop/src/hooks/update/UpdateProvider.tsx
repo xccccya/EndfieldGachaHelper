@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useUpdater } from '../useUpdater';
 import { UpdateContext, type UpdateCheckSource } from './UpdateContext';
 
@@ -15,6 +16,7 @@ type Props = {
 export function UpdateProvider({ children, startupDelayMs = 2500 }: Props) {
   const updater = useUpdater();
 
+  const [isPortable, setIsPortable] = useState(false);
   const [toastOpen, setToastOpen] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(() => {
     const raw = localStorage.getItem(STORAGE_KEY_LAST_CHECKED_AT);
@@ -34,6 +36,11 @@ export function UpdateProvider({ children, startupDelayMs = 2500 }: Props) {
   const startupTimerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 记录启动检查是否已触发
   const startupCheckTriggeredRef = useRef(false);
+
+  // 启动时检测是否为便携版
+  useEffect(() => {
+    invoke<boolean>('is_portable').then(setIsPortable).catch(() => setIsPortable(true));
+  }, []);
 
   const persistLastCheckedAt = useCallback((ts: number) => {
     setLastCheckedAt(ts);
@@ -226,6 +233,7 @@ export function UpdateProvider({ children, startupDelayMs = 2500 }: Props) {
       error: updater.error,
       downloadAndInstall: updater.downloadAndInstall,
       restartApp: updater.restartApp,
+      isPortable,
       hasUpdate,
       lastCheckedAt,
       nextAutoCheckAt,
@@ -240,6 +248,7 @@ export function UpdateProvider({ children, startupDelayMs = 2500 }: Props) {
       updater.error,
       updater.downloadAndInstall,
       updater.restartApp,
+      isPortable,
       hasUpdate,
       lastCheckedAt,
       nextAutoCheckAt,

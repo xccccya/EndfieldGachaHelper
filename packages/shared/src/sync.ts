@@ -228,6 +228,8 @@ export type LeaderboardResponse = {
   myRank?: number;
   /** 当前用户在该榜单中的数值 */
   myValue?: number;
+  /** 该榜单的参与总人数 */
+  totalCount: number;
 };
 
 /** 所有排行榜响应 */

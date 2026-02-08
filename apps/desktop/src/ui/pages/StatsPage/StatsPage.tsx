@@ -205,7 +205,12 @@ export function StatsPage() {
         });
       }
       
-      weapon.sort((a, b) => b.status.totalSessions - a.status.totalSessions);
+      // 按最新记录时间排序（有最新记录的排在前面）
+      weapon.sort((a, b) => {
+        const latestA = a.sessions.reduce((max, s) => Math.max(max, getTimestamp(s.gachaTs)), 0);
+        const latestB = b.sessions.reduce((max, s) => Math.max(max, getTimestamp(s.gachaTs)), 0);
+        return latestB - latestA;
+      });
       
       setPoolGroupedData({
         special,
@@ -643,8 +648,8 @@ export function StatsPage() {
                 ) : (
                   <>
                     <SharedSpecialPityCard pityStatus={specialSharedPityStatus} />
-                    {poolGroupedData.special.map((group) => (
-                      <PoolGroupCard key={group.poolId} group={group} showFiveStars={showFiveStars} />
+                    {poolGroupedData.special.map((group, index) => (
+                      <PoolGroupCard key={group.poolId} group={group} showFiveStars={showFiveStars} defaultExpanded={index === 0} />
                     ))}
                   </>
                 )}
@@ -660,8 +665,8 @@ export function StatsPage() {
                     <p>{t('stats.ui.poolEmpty.weapon')}</p>
                   </div>
                 ) : (
-                  poolGroupedData.weapon.map((group) => (
-                    <WeaponPoolCard key={group.poolId} group={group} showFiveStars={showFiveStars} />
+                  poolGroupedData.weapon.map((group, index) => (
+                    <WeaponPoolCard key={group.poolId} group={group} showFiveStars={showFiveStars} defaultExpanded={index === 0} />
                   ))
                 )}
               </div>

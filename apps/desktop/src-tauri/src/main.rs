@@ -1,6 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::Serialize;
+#[cfg(target_os = "windows")]
+use winreg::enums::*;
+#[cfg(target_os = "windows")]
+use winreg::RegKey;
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -191,6 +195,77 @@ fn set_auto_sync(app: AppHandle, enabled: bool) {
     }
 }
 
+/// Tauri 命令：准备数据库路径
+///
+/// 在 Rust 端完成所有文件系统操作（不受前端 FS 插件 scope 限制）：
+/// 1. 在 exe 所在目录下创建 userdata/ 文件夹
+/// 2. 如果新位置没有数据库，尝试从旧版默认位置（$APPDATA/<identifier>/）复制
+/// 3. 返回完整的 sqlite: 连接字符串
+#[tauri::command]
+fn prepare_db_path(app: AppHandle) -> Result<String, String> {
+    // —— 定位 exe 目录并构建目标路径 ——
+    let exe_dir = std::env::current_exe()
+        .map_err(|e| format!("获取 exe 路径失败: {}", e))?
+        .parent()
+        .ok_or_else(|| "无法获取 exe 所在目录".to_string())?
+        .to_path_buf();
+
+    let userdata_dir = exe_dir.join("userdata");
+    let new_db = userdata_dir.join("efgacha.db");
+
+    // —— 确保 userdata 目录存在 ——
+    if !userdata_dir.exists() {
+        std::fs::create_dir_all(&userdata_dir)
+            .map_err(|e| format!("创建 userdata 目录失败: {}", e))?;
+    }
+
+    // —— 旧版数据自动迁移 ——
+    // 旧版数据库存放在 Tauri 默认的 app_config_dir（$APPDATA/<identifier>/efgacha.db）。
+    // 仅当新位置尚无数据库时才尝试迁移，防止覆盖已有数据。
+    // 使用「复制」而非「移动」，旧文件保留作为安全备份。
+    if !new_db.exists() {
+        if let Ok(old_dir) = app.path().app_config_dir() {
+            let old_db = old_dir.join("efgacha.db");
+            if old_db.exists() {
+                match std::fs::copy(&old_db, &new_db) {
+                    Ok(bytes) => {
+                        eprintln!(
+                            "[db] 已从旧路径迁移数据库 ({} bytes): {:?} -> {:?}",
+                            bytes, old_db, new_db
+                        );
+                    }
+                    Err(e) => {
+                        // 迁移失败不阻塞启动，程序会在新路径创建空数据库
+                        eprintln!("[db] 数据库迁移失败: {}", e);
+                    }
+                }
+            }
+        }
+    }
+
+    // —— 返回 sqlite: 连接字符串 ——
+    let db_path = new_db
+        .to_str()
+        .ok_or_else(|| "数据库路径编码无效".to_string())?;
+
+    Ok(format!("sqlite:{}", db_path))
+}
+
+/// Tauri 命令：检测是否为便携版（通过注册表判断）
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn is_portable() -> bool {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    hkcu.open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Uninstall\com.efgachahelper.dev")
+        .is_err()
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+fn is_portable() -> bool {
+    true
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
@@ -206,7 +281,9 @@ fn main() {
             navigate_main,
             quit_app,
             toggle_sync,
-            set_auto_sync
+            set_auto_sync,
+            prepare_db_path,
+            is_portable
         ])
         .setup(|app| {
             // 加载托盘图标

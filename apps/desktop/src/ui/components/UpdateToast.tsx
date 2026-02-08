@@ -8,7 +8,7 @@ import { useUpdate } from '../../hooks/update';
 export function UpdateToast() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { status, updateInfo, progress, toastOpen, setToastOpen, downloadAndInstall, restartApp } = useUpdate();
+  const { status, updateInfo, progress, toastOpen, setToastOpen, downloadAndInstall, restartApp, isPortable } = useUpdate();
 
   const visible = toastOpen && (status === 'available' || status === 'downloading' || status === 'ready');
   const title = useMemo(() => {
@@ -130,33 +130,51 @@ export function UpdateToast() {
               {/* 操作按钮 */}
               <div className="mt-3 flex items-center gap-2">
                 {status === 'available' ? (
-                  <>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        void downloadAndInstall().then(() => {
-                          setToastOpen(true);
-                        });
-                      }}
-                      icon={<Download size={14} />}
-                    >
-                      {t('settings.downloadUpdate', '下载更新')}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setToastOpen(false);
-                        void navigate('/about');
-                      }}
-                    >
-                      {t('updater.toastViewDetails', '查看详情')}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setToastOpen(false)}>
-                      {t('updater.toastLater', '稍后')}
-                    </Button>
-                  </>
+                  isPortable ? (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          setToastOpen(false);
+                          void navigate('/about');
+                        }}
+                      >
+                        {t('updater.toastViewDetails', '查看详情')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setToastOpen(false)}>
+                        {t('updater.toastLater', '稍后')}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          void downloadAndInstall().then(() => {
+                            setToastOpen(true);
+                          });
+                        }}
+                        icon={<Download size={14} />}
+                      >
+                        {t('settings.downloadUpdate', '下载更新')}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setToastOpen(false);
+                          void navigate('/about');
+                        }}
+                      >
+                        {t('updater.toastViewDetails', '查看详情')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setToastOpen(false)}>
+                        {t('updater.toastLater', '稍后')}
+                      </Button>
+                    </>
+                  )
                 ) : null}
 
                 {status === 'ready' ? (

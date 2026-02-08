@@ -13,6 +13,7 @@ import {
   calculateFreeSegmentStats,
   sortRecordsByTimeAndSeq,
 } from '../../../lib/poolUtils';
+import { getTimestamp } from '../../../lib/dateUtils';
 import type { PitySegment, PoolGroupStats, RarityCountMap, CountedItem } from './types';
 
 /** 缓动函数 */
@@ -205,8 +206,12 @@ export async function groupRecordsByPool(records: UnifiedGachaRecord[]): Promise
     });
   }
 
-  // 按总抽数排序
-  result.sort((a, b) => b.total - a.total);
+  // 按最新记录时间排序（有最新记录的排在前面）
+  result.sort((a, b) => {
+    const latestA = a.records.reduce((max, r) => Math.max(max, getTimestamp(r.gachaTs)), 0);
+    const latestB = b.records.reduce((max, r) => Math.max(max, getTimestamp(r.gachaTs)), 0);
+    return latestB - latestA;
+  });
 
   return result;
 }

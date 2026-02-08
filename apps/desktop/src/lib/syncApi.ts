@@ -547,4 +547,10 @@ export const syncApi = {
   },
 };
 
+/**
+ * 通用的带自动 Token 刷新的鉴权请求函数
+ * 供其他 API 模块（如 leaderboardApi）复用，避免重复实现 Token 刷新逻辑
+ */
+export { request as authenticatedRequest };
+
 export { SyncApiError };

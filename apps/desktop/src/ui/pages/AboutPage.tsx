@@ -59,7 +59,8 @@ export function AboutPage() {
     nextAutoCheckAt,
     checkForUpdate, 
     downloadAndInstall, 
-    restartApp 
+    restartApp,
+    isPortable,
   } = useUpdate();
 
   const lastCheckedLabel = useMemo(() => {
@@ -279,28 +280,65 @@ export function AboutPage() {
 
                     <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => {
-                            void downloadAndInstall();
-                          }}
-                          icon={<Download size={14} />}
-                        >
-                          {t('settings.downloadUpdate', '下载更新')}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            void checkForUpdate('manual');
-                          }}
-                          icon={<RefreshCw size={14} />}
-                        >
-                          {t('updater.recheck', '重新检查')}
-                        </Button>
+                        {isPortable ? (
+                          <>
+                            <a
+                              href="https://github.com/xccccya/EndfieldGachaHelper/releases"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                icon={<ExternalLink size={14} />}
+                              >
+                                {t('updater.portableDownloadGithub', 'GitHub 下载')}
+                              </Button>
+                            </a>
+                            <a
+                              href="https://yukiovo.com/420.html"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<ExternalLink size={14} />}
+                              >
+                                {t('updater.portableDownloadChina', '国内下载')}
+                              </Button>
+                            </a>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => {
+                                void downloadAndInstall();
+                              }}
+                              icon={<Download size={14} />}
+                            >
+                              {t('settings.downloadUpdate', '下载更新')}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => {
+                                void checkForUpdate('manual');
+                              }}
+                              icon={<RefreshCw size={14} />}
+                            >
+                              {t('updater.recheck', '重新检查')}
+                            </Button>
+                          </>
+                        )}
                       </div>
-                      <span className="text-xs text-fg-2">{t('updater.downloadHint', '下载完成后将自动重启并安装')}</span>
+                      <span className="text-xs text-fg-2">
+                        {isPortable
+                          ? t('updater.portableDesc', '便携版不支持自动更新，请手动下载最新版本')
+                          : t('updater.downloadHint', '下载完成后将自动重启并安装')}
+                      </span>
                     </div>
                   </div>
                 </div>

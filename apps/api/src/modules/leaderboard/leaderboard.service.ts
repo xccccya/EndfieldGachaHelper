@@ -157,11 +157,17 @@ export class LeaderboardService implements OnModuleInit {
     limit: number = 50,
     userId?: string,
   ): Promise<LeaderboardResponse> {
-    const entries = await this.prisma.leaderboardCache.findMany({
-      where: { type },
-      orderBy: { rank: 'asc' },
-      take: Math.min(limit, MAX_LEADERBOARD_SIZE),
-    });
+    // 并行查询排行榜条目和总参与人数
+    const [entries, totalCount] = await Promise.all([
+      this.prisma.leaderboardCache.findMany({
+        where: { type },
+        orderBy: { rank: 'asc' },
+        take: Math.min(limit, MAX_LEADERBOARD_SIZE),
+      }),
+      this.prisma.leaderboardCache.count({
+        where: { type },
+      }),
+    ]);
 
     // 从内存中获取真实的排行榜更新时间
     // 即使排行榜为空，也返回最后一次定时任务执行的时间
@@ -178,6 +184,7 @@ export class LeaderboardService implements OnModuleInit {
         uidHidden: e.uidHidden,
       })),
       updatedAt,
+      totalCount,
     };
 
     // 如果提供了 userId，查找用户在该榜单的排名
@@ -438,6 +445,9 @@ export class LeaderboardService implements OnModuleInit {
 
   /**
    * 保存排行榜数据到缓存表
+   *
+   * 使用事务保证"删除旧数据 + 插入新数据"的原子性，
+   * 避免并发读取在两步之间看到空数据。
    */
   private async saveLeaderboard(
     type: LeaderboardType,
@@ -456,27 +466,30 @@ export class LeaderboardService implements OnModuleInit {
     // 更新内存中的最后更新时间
     this.lastUpdatedAt.set(type, now);
 
-    // 清除旧数据
-    await this.prisma.leaderboardCache.deleteMany({
-      where: { type },
-    });
-
-    // 插入新数据
-    if (entries.length > 0) {
-      await this.prisma.leaderboardCache.createMany({
-        data: entries.map((e) => ({
-          type,
-          rank: e.rank,
-          gameAccountId: e.gameAccountId,
-          userId: e.userId,
-          displayUid: e.hideUid ? this.maskUid(e.uid) : e.uid,
-          region: this.formatRegion(e.region),
-          value: e.value,
-          uidHidden: e.hideUid,
-          cachedAt: now,
-        })),
+    // 在事务中执行删除+插入，确保外部读取不会看到中间的空状态
+    await this.prisma.$transaction(async (tx) => {
+      // 清除旧数据
+      await tx.leaderboardCache.deleteMany({
+        where: { type },
       });
-    }
+
+      // 插入新数据
+      if (entries.length > 0) {
+        await tx.leaderboardCache.createMany({
+          data: entries.map((e) => ({
+            type,
+            rank: e.rank,
+            gameAccountId: e.gameAccountId,
+            userId: e.userId,
+            displayUid: e.hideUid ? this.maskUid(e.uid) : e.uid,
+            region: this.formatRegion(e.region),
+            value: e.value,
+            uidHidden: e.hideUid,
+            cachedAt: now,
+          })),
+        });
+      }
+    });
   }
 
   /**

@@ -7,6 +7,8 @@ export type UpdateState = Pick<
   UseUpdaterReturn,
   'status' | 'updateInfo' | 'progress' | 'error' | 'downloadAndInstall' | 'restartApp'
 > & {
+  /** 是否为便携版 */
+  isPortable: boolean;
   /** 是否存在可用更新（用于侧边栏 Badge 等） */
   hasUpdate: boolean;
   /** 最近一次检查时间（ms since epoch） */

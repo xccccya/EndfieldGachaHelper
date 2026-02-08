@@ -171,9 +171,9 @@ export function SharedSpecialPityCard({ pityStatus }: { pityStatus: PityStatus }
 }
 
 /** 武器池卡片 */
-export function WeaponPoolCard({ group, showFiveStars }: { group: WeaponPoolGroupStats; showFiveStars: boolean }) {
+export function WeaponPoolCard({ group, showFiveStars, defaultExpanded = true }: { group: WeaponPoolGroupStats; showFiveStars: boolean; defaultExpanded?: boolean }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [imgError, setImgError] = useState(false);
   const panelId = `weapon-pool-${group.poolId}`;
 
@@ -835,9 +835,9 @@ export function PityProgressBar({
 /**
  * 单个池子的展示组件
  */
-export function PoolGroupCard({ group, showFiveStars }: { group: PoolGroupStats; showFiveStars: boolean }) {
+export function PoolGroupCard({ group, showFiveStars, defaultExpanded = true }: { group: PoolGroupStats; showFiveStars: boolean; defaultExpanded?: boolean }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [pityExpanded, setPityExpanded] = useState(false);
   const [imgError, setImgError] = useState(false);
   const panelId = `pool-group-${group.poolId}`;

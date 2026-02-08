@@ -4,20 +4,38 @@
  */
 
 import Database from '@tauri-apps/plugin-sql';
+import { invoke } from '@tauri-apps/api/core';
 
 // 数据库实例
 let db: Database | null = null;
 
-// 数据库名称
-const DB_NAME = 'sqlite:efgacha.db';
+// 数据库路径（延迟初始化）
+let dbPath: string | null = null;
+
+/**
+ * 获取数据库路径
+ *
+ * 由 Rust 端 `prepare_db_path` 命令统一处理：
+ * 1. 在 exe 所在目录下创建 userdata/ 文件夹
+ * 2. 首次运行时自动从旧版默认位置（$APPDATA）迁移数据库
+ * 3. 返回 sqlite: 连接字符串
+ *
+ * 所有文件系统操作在 Rust 端完成，不受前端 FS 插件 scope 限制。
+ */
+async function getDbPath(): Promise<string> {
+  if (dbPath) return dbPath;
+  dbPath = await invoke<string>('prepare_db_path');
+  return dbPath;
+}
 
 /**
  * 获取数据库实例
  */
 export async function getDB(): Promise<Database> {
   if (db) return db;
-  
-  db = await Database.load(DB_NAME);
+
+  const path = await getDbPath();
+  db = await Database.load(path);
   await initTables();
   return db;
 }
