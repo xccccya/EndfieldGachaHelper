@@ -24,11 +24,13 @@ const POOL_UP_MAP: Record<string, string> = {
   // ============== 角色限定池（特许寻访） ==============
   // poolId 格式: special_{version}_{subversion}_{index}
   'special_1_0_1': '莱万汀',
+  'special_1_0_2': '伊冯',
   'special_1_0_3': '洁尔佩塔',
 
   // ============== 武器限定池（与角色限定池关联） ==============
   // poolId 格式: weponbox_{version}_{subversion}_{index}（注意：API 返回的是 weponbox 而非 weaponbox）
   'weponbox_1_0_1': '熔铸火焰',
+  'weponbox_1_0_2': '艺术暴君',
   'weponbox_1_0_3': '使命必达',
 
   // ============== 武器常驻池 ==============
