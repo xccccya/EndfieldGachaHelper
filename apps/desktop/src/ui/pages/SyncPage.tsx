@@ -17,6 +17,7 @@ import {
   Database,
   Clock,
   Sword,
+  ArrowRight,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge } from '../components';
 import { useGachaSync, useAccounts, useGachaRecordsData } from '../../hooks/useEndfield';
@@ -67,6 +68,8 @@ export function SyncPage() {
   }, [activeUid, syncRecords, navigate]);
 
   const isLoading = progress.status === 'authenticating' || progress.status === 'fetching_records';
+  const isAccountTokenExpiredError =
+    progress.status === 'error' && progress.errorCode === 'account_token_expired';
 
   return (
     <div className="space-y-4">
@@ -211,16 +214,66 @@ export function SyncPage() {
 
           {/* 错误状态 */}
           {progress.status === 'error' && (
-            <div className="p-4 rounded-md bg-red-500/10 border border-red-500/30 mb-4">
-              <div className="flex items-center gap-3">
-                <AlertCircle size={20} className="text-red-400" />
-                <div className="flex-1">
-                  <div className="font-medium text-red-400">{t('sync.error')}</div>
-                  <div className="text-sm text-fg-2">{progress.error}</div>
+            <div
+              className={`mb-4 rounded-md border p-4 ${
+                isAccountTokenExpiredError
+                  ? 'border-amber-500/35 bg-gradient-to-br from-amber-500/12 via-red-500/8 to-transparent'
+                  : 'border-red-500/30 bg-red-500/10'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border ${
+                    isAccountTokenExpiredError
+                      ? 'border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300'
+                      : 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  <AlertCircle size={18} />
                 </div>
-                <Button variant="ghost" size="sm" onClick={reset}>
-                  {t('common.retry')}
-                </Button>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className={
+                      isAccountTokenExpiredError
+                        ? 'font-semibold text-amber-800 dark:text-amber-200'
+                        : 'font-medium text-red-700 dark:text-red-400'
+                    }
+                  >
+                    {isAccountTokenExpiredError ? t('sync.accountTokenExpiredTitle') : t('sync.error')}
+                  </div>
+                  <div className="mt-1 text-sm leading-6 text-fg-2">
+                    {isAccountTokenExpiredError ? t('sync.accountTokenExpiredDesc') : progress.error}
+                  </div>
+                  {isAccountTokenExpiredError && (
+                    <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-500/20 dark:bg-black/10 dark:text-amber-100/85">
+                      {t('sync.accountTokenExpiredHint')}
+                    </div>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {isAccountTokenExpiredError ? (
+                      <>
+                        <Button
+                          variant="accent"
+                          size="sm"
+                          onClick={() => {
+                            reset();
+                            void navigate('/account');
+                          }}
+                          icon={<ArrowRight size={16} />}
+                        >
+                          {t('sync.goAccountManage')}
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={reset}>
+                          {t('common.dismiss')}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={reset}>
+                        {t('common.retry')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

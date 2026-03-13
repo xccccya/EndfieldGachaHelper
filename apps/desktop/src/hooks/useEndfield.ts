@@ -60,6 +60,7 @@ export type SyncProgress = {
   /** 总记录数 */
   recordsFetched?: number;
   error?: string;
+  errorCode?: 'account_token_expired';
 };
 
 const defaultOptions = { fetcher: tauriFetcher };
@@ -358,6 +359,7 @@ export function useGachaSync() {
         throw err;
       }
       let message = '同步失败';
+      let errorCode: SyncProgress['errorCode'];
       if (err instanceof Error) {
         if (err instanceof EndfieldRiskControlError) {
           message =
@@ -365,17 +367,25 @@ export function useGachaSync() {
         } else if (err instanceof HttpError && err.message.includes('fetchU8TokenByUid failed')) {
           // u8_token 获取失败：更精确地区分 token 问题与服务端错误
           if (err.status === 401 || err.status === 403) {
-            message = '账号凭证已失效，请重新添加 Token 后再同步';
+            message = '账号 Token 已经过期，请前往账号管理重新添加。';
+            errorCode = 'account_token_expired';
           } else {
             message = `获取同步凭证失败（HTTP ${err.status}），请稍后再试`;
           }
+        } else if (err.message.includes('fetchU8TokenByUid: missing u8 token in response')) {
+          message = '账号 Token 已经过期，请前往账号管理重新添加。';
+          errorCode = 'account_token_expired';
         } else if (err.message.includes('网络请求失败') || err.message.includes('Failed to fetch')) {
           message = '网络连接失败，请检查网络设置';
         } else {
           message = err.message;
         }
       }
-      setProgress({ status: 'error', error: message });
+      setProgress(
+        errorCode
+          ? { status: 'error', error: message, errorCode }
+          : { status: 'error', error: message }
+      );
       throw err;
     } finally {
       abortRef.current = null;
